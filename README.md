@@ -2,6 +2,78 @@
 
 ApprenticeVR is a modern, cross-platform desktop application built with Electron, React, and TypeScript, designed for managing and sideloading content onto Meta Quest devices. It aims to provide a user-friendly and feature-rich alternative to existing sideloading tools.
 
+## Server Configuration (Required on First Run)
+
+ApprenticeVR no longer fetches VRP credentials from a remote server. You must provide your own `vrp-public.json` configuration file.
+
+On first launch, the app will show a dialog with the location of the config file. You can also create it manually:
+
+| Platform | Config Location |
+|----------|----------------|
+| **Linux** | `~/.config/apprenticevr/vrp-public.json` |
+| **macOS** | `~/Library/Application Support/apprenticevr/vrp-public.json` |
+| **Windows** | `%APPDATA%\apprenticevr\vrp-public.json` |
+
+Create or edit the file with the following format:
+
+```json
+{"baseUri":"https://your-url-here/","password":"your-password-here"}
+```
+NOTE: Linux line endings might be required
+
+Then restart the app. If credentials change in the future, just update this file -- no rebuild needed.
+
+## Building for Release
+
+### Prerequisites
+
+*   [Node.js](https://nodejs.org/) (which includes npm)
+
+### Install Dependencies
+
+```bash
+npm install --legacy-peer-deps
+```
+
+### Build Commands
+
+```bash
+# Windows (NSIS installer + portable, x64 & ia32)
+npm run build:win
+
+# macOS (DMG, x64 & arm64)
+npm run build:mac
+
+# Linux (AppImage + .deb, x64 & arm64)
+npm run build:linux
+
+# All platforms at once
+npm run build:all
+```
+
+**Specific architecture builds:**
+
+```bash
+# Windows
+npm run build:win:x64
+npm run build:win:ia32
+
+# macOS
+npm run build:mac:x64
+npm run build:mac:arm64
+npm run build:mac:universal
+
+# Linux
+npm run build:linux:x64
+npm run build:linux:arm64
+```
+
+Build output goes to the `dist/` directory.
+
+---
+
+# Original README
+
 ## Inspiration
 
 This project is heavily inspired by the fantastic work done on [Rookie Sideloader](https://github.com/VRPirates/rookie). ApprenticeVR seeks to build upon that foundation by offering a contemporary interface and experience across Windows, macOS, and Linux.
