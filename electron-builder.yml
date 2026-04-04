@@ -61,6 +61,7 @@ linux:
   target:
     - target: AppImage
     - target: deb
+  icon: build/icon.png
   maintainer: electronjs.org
   category: Utility
 appImage:
