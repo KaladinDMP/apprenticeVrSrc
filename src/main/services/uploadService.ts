@@ -60,7 +60,7 @@ class UploadService extends EventEmitter {
   }
 
   private async fetchRcloneConfig(): Promise<void> {
-    const configUrl = 'https://vrpirates.wiki/downloads/vrp.upload.config'
+    const configUrl = 'https://vrpirates.wiki/downloads/vrp.upload.config' // TODO: Update URL when new upload endpoint is available
 
     try {
       console.log(`Fetching rclone upload config from: ${configUrl}`)
@@ -130,7 +130,7 @@ class UploadService extends EventEmitter {
         stageName = 'Creating zip archive'
         break
       case UploadStage.Uploading:
-        stageName = 'Uploading to VRPirates'
+        stageName = 'Uploading to server'
         break
       case UploadStage.Complete:
         stageName = 'Complete'
@@ -535,18 +535,18 @@ class UploadService extends EventEmitter {
 
       try {
         // Update item status for upload stage
-        this.updateItemStatus(packageName, 'Uploading', 0, 'Uploading to VRPirates')
+        this.updateItemStatus(packageName, 'Uploading', 0, 'Uploading to server')
 
-        // Upload the zip file to VRPirates
-        const uploadSuccess = await this.uploadToVRPirates(packageName, zipFilePath)
+        // Upload the zip file to the server
+        const uploadSuccess = await this.uploadToServer(packageName, zipFilePath)
 
         if (!uploadSuccess) {
-          throw new Error('Failed to upload to VRPirates')
+          throw new Error('Failed to upload to server')
         }
 
         this.updateProgress(packageName, UploadStage.Uploading, 100)
       } catch (uploadError) {
-        console.error(`Error uploading ${zipFilePath} to VRPirates:`, uploadError)
+        console.error(`Error uploading ${zipFilePath} to server:`, uploadError)
         throw uploadError
       }
 
@@ -563,14 +563,13 @@ class UploadService extends EventEmitter {
   }
 
   /**
-   * Uploads the zip file to VRPirates using rclone
+   * Uploads the zip file to the server using rclone
    * @param packageName The package name
-   * @param gameName The game name
    * @param zipFilePath Path to the zip file to upload
    * @returns true if upload was successful, false otherwise
    */
-  private async uploadToVRPirates(packageName: string, zipFilePath: string): Promise<boolean> {
-    console.log(`[UploadService] Starting upload of ${zipFilePath} to VRPirates`)
+  private async uploadToServer(packageName: string, zipFilePath: string): Promise<boolean> {
+    console.log(`[UploadService] Starting upload of ${zipFilePath} to server`)
 
     if (!existsSync(this.configFilePath)) {
       console.error(`[UploadService] Rclone config file not found: ${this.configFilePath}`)
@@ -652,7 +651,7 @@ class UploadService extends EventEmitter {
       this.activeUpload = null
       return true
     } catch (error) {
-      console.error(`[UploadService] Error uploading to VRPirates:`, error)
+      console.error(`[UploadService] Error uploading to server:`, error)
       if (this.activeUpload) {
         try {
           this.activeUpload.kill('SIGTERM')

@@ -118,10 +118,10 @@ const UploadGamesDialog: React.FC = () => {
         }}
       >
         <DialogBody>
-          <DialogTitle>Upload Games to VRPirates</DialogTitle>
+          <DialogTitle>Upload Games</DialogTitle>
           <DialogContent>
             <Text>
-              We found games on your device that could benefit the VRPirates community. These games
+              We found games on your device that could benefit the community. These games
               are either missing in our database or newer than the versions we have.
             </Text>
 

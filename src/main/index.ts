@@ -60,7 +60,7 @@ function createWindow(): void {
     height: 900,
     show: false,
     autoHideMenuBar: true,
-    title: 'apprenticevr',
+    title: 'ApprenticeVR: VRSrc Edition',
     icon: icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

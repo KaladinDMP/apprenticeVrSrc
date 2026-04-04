@@ -26,7 +26,7 @@ class GameService extends EventEmitter implements GamesAPI {
   private metaPath: string
   private blacklistGamesPath: string
   private customBlacklistPath: string
-  private vrpPublicPath: string
+  private serverInfoPath: string
   private vrpConfig: VrpConfig | null = null
   private games: GameInfo[] = []
   private blacklistGames: string[] = []
@@ -41,7 +41,7 @@ class GameService extends EventEmitter implements GamesAPI {
     this.metaPath = join(this.dataPath, '.meta')
     this.blacklistGamesPath = join(this.metaPath, 'nouns', 'blacklist.txt')
     this.customBlacklistPath = join(app.getPath('userData'), 'custom-blacklist.json')
-    this.vrpPublicPath = join(app.getPath('userData'), 'vrp-public.json')
+    this.serverInfoPath = join(app.getPath('userData'), 'ServerInfo.json')
   }
 
   async initialize(force?: boolean): Promise<ServiceStatus> {
@@ -192,11 +192,11 @@ class GameService extends EventEmitter implements GamesAPI {
 
   private async fetchVrpPublicInfo(): Promise<void> {
     try {
-      // Try user-editable vrp-public.json in userData first, then fall back to bundled resource
+      // Try user-editable ServerInfo.json in userData first, then fall back to bundled resource
       let data: VrpConfig | null = null
 
-      const userFile = this.vrpPublicPath
-      const bundledFile = join(process.resourcesPath, 'vrp-public.json')
+      const userFile = this.serverInfoPath
+      const bundledFile = join(process.resourcesPath, 'ServerInfo.json')
 
       for (const filePath of [userFile, bundledFile]) {
         try {
@@ -204,11 +204,11 @@ class GameService extends EventEmitter implements GamesAPI {
           if (exists) {
             const raw = await fs.readFile(filePath, 'utf-8')
             data = JSON.parse(raw) as VrpConfig
-            console.log('VRP Config loaded from:', filePath)
+            console.log('Server config loaded from:', filePath)
             break
           }
         } catch (err) {
-          console.warn('Failed to read vrp-public.json from', filePath, err)
+          console.warn('Failed to read ServerInfo.json from', filePath, err)
         }
       }
 
@@ -227,12 +227,13 @@ class GameService extends EventEmitter implements GamesAPI {
 
         await dialog.showMessageBox({
           type: 'info',
-          title: 'VRP Configuration Required',
-          message: 'Please configure your VRP credentials',
+          title: 'Server Configuration Required',
+          message: 'Please configure your server credentials',
           detail:
-            `A vrp-public.json file has been created at:\n\n` +
+            `A ServerInfo.json file has been created at:\n\n` +
             `${userFile}\n\n` +
-            `Open this file in a text editor and fill in your baseUri and password:\n\n` +
+            `Open this file in a text editor and fill in your baseUri and password.\n` +
+            `IMPORTANT: The file must use Linux/LF line endings (not Windows/CRLF).\n\n` +
             `{"baseUri":"https://your-url-here/","password":"your-password-here"}\n\n` +
             `Then restart the app.`,
           buttons: ['Open File Location', 'OK']
@@ -242,12 +243,12 @@ class GameService extends EventEmitter implements GamesAPI {
           }
         })
 
-        throw new Error('VRP credentials not configured. Please edit vrp-public.json and restart.')
+        throw new Error('Server credentials not configured. Please edit ServerInfo.json and restart.')
       }
 
       this.vrpConfig = data
 
-      console.log('VRP Config loaded - baseUri:', !!this.vrpConfig?.baseUri)
+      console.log('Server config loaded - baseUri:', !!this.vrpConfig?.baseUri)
 
       await this.saveConfig()
     } catch (error) {

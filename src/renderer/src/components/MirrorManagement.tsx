@@ -231,7 +231,7 @@ const MirrorManagement: React.FC = () => {
                   </Text>
                   <Textarea
                     placeholder={`Example:
-[VRP-mirror01]
+[mirror01]
 type = ftp
 host = example.com
 port = 21

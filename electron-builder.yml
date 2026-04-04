@@ -1,5 +1,5 @@
 appId: com.apprenticevr
-productName: apprenticevr
+productName: ApprenticeVR VRSrc Edition
 directories:
   buildResources: build
 icon: build/icon
@@ -21,8 +21,8 @@ extraResources:
     to: bin
     filter:
       - '*'
-  - from: resources/vrp-public.json
-    to: vrp-public.json
+  - from: resources/ServerInfo.json
+    to: ServerInfo.json
 win:
   target:
     - target: nsis
@@ -51,8 +51,8 @@ mac:
   extendInfo:
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-    - CFBundleName: apprenticevr
-    - CFBundleDisplayName: apprenticevr
+    - CFBundleName: ApprenticeVR VRSrc Edition
+    - CFBundleDisplayName: ApprenticeVR VRSrc Edition
   notarize: false
   icon: build/icon.icns
 dmg:

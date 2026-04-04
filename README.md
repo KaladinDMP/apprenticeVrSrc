@@ -1,25 +1,26 @@
-# ApprenticeVR
+# ApprenticeVR: VRSrc Edition
 
-ApprenticeVR is a modern, cross-platform desktop application built with Electron, React, and TypeScript, designed for managing and sideloading content onto Meta Quest devices. It aims to provide a user-friendly and feature-rich alternative to existing sideloading tools.
+ApprenticeVR: VRSrc Edition is a modern, cross-platform desktop application built with Electron, React, and TypeScript, designed for managing and sideloading content onto Meta Quest devices. It aims to provide a user-friendly and feature-rich alternative to existing sideloading tools.
 
 ## Server Configuration (Required on First Run)
 
-ApprenticeVR no longer fetches VRP credentials from a remote server. You must provide your own `vrp-public.json` configuration file.
+You must provide your own `ServerInfo.json` configuration file.
 
 On first launch, the app will show a dialog with the location of the config file. You can also create it manually:
 
 | Platform | Config Location |
 |----------|----------------|
-| **Linux** | `~/.config/apprenticevr/vrp-public.json` |
-| **macOS** | `~/Library/Application Support/apprenticevr/vrp-public.json` |
-| **Windows** | `%APPDATA%\apprenticevr\vrp-public.json` |
+| **Linux** | `~/.config/apprenticevr/ServerInfo.json` |
+| **macOS** | `~/Library/Application Support/apprenticevr/ServerInfo.json` |
+| **Windows** | `%APPDATA%\apprenticevr\ServerInfo.json` |
 
 Create or edit the file with the following format:
 
 ```json
 {"baseUri":"https://your-url-here/","password":"your-password-here"}
 ```
-NOTE: Linux line endings might be required
+
+**IMPORTANT:** The `ServerInfo.json` file **must** use Linux/LF line endings (`\n`), **not** Windows/CRLF line endings (`\r\n`). This applies to **all platforms** (Windows, macOS, and Linux). Most modern text editors (VS Code, Notepad++, Sublime Text) can set line endings — make sure it is set to `LF` before saving. If the app fails to read your credentials, incorrect line endings are the most common cause.
 
 Then restart the app. If credentials change in the future, just update this file -- no rebuild needed.
 
@@ -76,7 +77,7 @@ Build output goes to the `dist/` directory.
 
 ## Inspiration
 
-This project is heavily inspired by the fantastic work done on [Rookie Sideloader](https://github.com/VRPirates/rookie). ApprenticeVR seeks to build upon that foundation by offering a contemporary interface and experience across Windows, macOS, and Linux.
+This project is heavily inspired by the fantastic work done on [Rookie Sideloader](https://github.com/VRPirates/rookie). ApprenticeVR: VRSrc Edition seeks to build upon that foundation by offering a contemporary interface and experience across Windows, macOS, and Linux.
 
 ## Features
 
@@ -105,7 +106,7 @@ This project is heavily inspired by the fantastic work done on [Rookie Sideloade
 
 ## Screenshots
 
-Here are some glimpses of ApprenticeVR in action:
+Here are some glimpses of ApprenticeVR: VRSrc Edition in action:
 
 **Device List (Dark Mode)**
 ![Device List - Dark Mode](screenshots/01_devices_dark.png)
@@ -121,7 +122,7 @@ Here are some glimpses of ApprenticeVR in action:
 
 ### macOS Specifics
 
-**Important:** Since the application is not signed by an Apple Developer ID, when you first try to open `apprenticevr.app` on macOS after building or downloading it, you might encounter an error message stating: `"apprenticeVR is damaged and can't be opened. You should move it to the Trash."`
+**Important:** Since the application is not signed by an Apple Developer ID, when you first try to open `apprenticevr.app` on macOS after building or downloading it, you might encounter an error message stating: `"ApprenticeVR: VRSrc Edition is damaged and can't be opened. You should move it to the Trash."`
 
 This error occurs because macOS Gatekeeper flags applications downloaded from the internet or built by unidentified developers as potentially unsafe. The `com.apple.quarantine` extended attribute is added to the application bundle by the system.
 
@@ -135,7 +136,7 @@ xattr -c /Applications/apprenticevr.app
 *   You might need to adjust the path `/Applications/apprenticevr.app` if you have placed the application in a different location.
 *   The `-c` flag in the `xattr` command stands for "clear," and it removes all extended attributes from the specified file or application bundle. By removing the quarantine attribute, you are essentially telling macOS that you trust this application.
 
-After running this command, you should be able to open ApprenticeVR without any issues.
+After running this command, you should be able to open ApprenticeVR: VRSrc Edition without any issues.
 
 ## Logs
 
@@ -151,13 +152,13 @@ You can also upload the current log file in the settings menu and share the url.
 
 # Troubleshooting Guide
 
-If ApprenticeVR is unable to connect, follow the steps below to identify and resolve the issue:
+If ApprenticeVR: VRSrc Edition is unable to connect, follow the steps below to identify and resolve the issue:
 
 ---
 
 ## ✅ Use the Latest Version
 
-Make sure you're using the latest version of ApprenticeVR:  
+Make sure you're using the latest version of ApprenticeVR: VRSrc Edition:  
 ➡️ [https://github.com/jimzrt/apprenticevr](https://github.com/jimzrt/apprenticevr)
 
 ---
@@ -170,11 +171,6 @@ Ensure you can access the following URLs from your browser:
   (Should redirect to the GitHub homepage)
 
 - [https://downloads.rclone.org/](https://downloads.rclone.org/)
-
-- [https://vrpirates.wiki/](https://vrpirates.wiki/)
-
-- [https://go.vrpyourself.online/](https://go.vrpyourself.online/)  
-  ⛔ Getting a message like **"Sorry, you have been blocked"** means it's working!
 
 ---
 
@@ -211,8 +207,6 @@ You can either:
 - OR identify and whitelist the following domains in your router/firewall settings:
   - `raw.githubusercontent.com`
   - `downloads.rclone.org`
-  - `vrpirates.wiki`
-  - `go.vrpyourself.online`
 
 ---
 

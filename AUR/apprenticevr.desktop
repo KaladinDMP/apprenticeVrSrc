@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=ApprenticeVR
-Comment=A modern, cross-platform desktop application designed for managing and sideloading content onto Meta Quest devices
+Name=ApprenticeVR: VRSrc Edition
+Comment=A modern, cross-platform desktop application for managing and sideloading content onto Meta Quest devices
 Exec=apprenticevr %U
 Icon=apprenticevr
 Categories=Games;
