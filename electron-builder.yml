@@ -56,6 +56,7 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
     - CFBundleName: ApprenticeVR VRSrc Edition
     - CFBundleDisplayName: ApprenticeVR VRSrc Edition
+  minimumSystemVersion: 10.15
   notarize: false
   icon: build/icon.icns
 dmg:

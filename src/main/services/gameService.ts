@@ -519,13 +519,31 @@ class GameService extends EventEmitter implements GamesAPI {
     }
   }
 
+  private async resolveGameListPath(): Promise<string | null> {
+    // Match any file ending in "amelist.txt" (e.g. VRP-GameList.txt, GameList.txt)
+    // since the server naming convention can change
+    try {
+      const entries = await fs.readdir(this.dataPath)
+      const match = entries.find((name) => /amelist\.txt$/i.test(name))
+      if (match) {
+        return join(this.dataPath, match)
+      }
+    } catch (error) {
+      console.error('Error reading data path while resolving game list file:', error)
+    }
+    return null
+  }
+
   private async loadGameList(): Promise<void> {
     try {
-      const exists = await fileExists(this.gameListPath)
-      if (!exists) {
-        console.error('Game list file not found')
+      const resolvedPath = await this.resolveGameListPath()
+      if (!resolvedPath) {
+        console.error('Game list file not found (looking for *amelist.txt in', this.dataPath, ')')
         return
       }
+
+      this.gameListPath = resolvedPath
+      console.log('Using game list file:', this.gameListPath)
 
       const data = await fs.readFile(this.gameListPath, 'utf-8')
       this.parseGameList(data)

@@ -155,6 +155,9 @@ On resume, measures already-downloaded bytes on disk as a baseline. Progress cal
 ### 12. Build Size Reduction (478MB → 110MB DMG)
 Moved 5 renderer-only deps (`@fluentui/*`, `@tanstack/*`, `date-fns`) to `devDependencies` — Vite already bundles them. Removed 12 completely unused deps. Added file exclusions for non-code files. Result: 77% smaller DMG, 93% smaller asar (208MB → 15MB).
 
+### 13. Game List File Resolution by Suffix Match
+Replaced hardcoded `VRP-GameList.txt` path with dynamic suffix-match resolution (`*amelist.txt`). The server naming convention changed, so `loadGameList()` now scans the data directory and matches any file ending in `amelist.txt` (case-insensitive). Adapted from community PR by KaladinDMP.
+
 ---
 
 # Original README
