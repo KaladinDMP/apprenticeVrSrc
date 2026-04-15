@@ -233,6 +233,9 @@ app.whenReady().then(async () => {
 
   // --------- IPC Handlers --------- //
 
+  // --- App Info Handlers ---
+  typedIpcMain.handle('app:get-version', () => app.getVersion())
+
   // --- Dependency Handlers ---
   typedIpcMain.handle('dependency:get-status', async () => dependencyService.getStatus())
 
@@ -450,6 +453,11 @@ app.whenReady().then(async () => {
   typedIpcMain.handle('settings:get-color-scheme', () => settingsService.getColorScheme())
   typedIpcMain.handle('settings:set-color-scheme', (_event, scheme) =>
     settingsService.setColorScheme(scheme)
+  )
+
+  typedIpcMain.handle('settings:get-server-config', () => settingsService.getServerConfig())
+  typedIpcMain.handle('settings:set-server-config', (_event, config) =>
+    settingsService.setServerConfig(config)
   )
 
   // --- Logs Handlers ---

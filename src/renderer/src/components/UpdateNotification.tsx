@@ -166,10 +166,6 @@ export function UpdateNotification(): React.ReactElement | null {
     }
   }
 
-  const handleViewReleases = (): void => {
-    window.api.updates?.openReleasesPage?.()
-  }
-
   const handleDismiss = (): void => {
     setIsDialogOpen(false)
   }
@@ -214,12 +210,13 @@ export function UpdateNotification(): React.ReactElement | null {
       </div>
     )
   } else if (updateAvailable) {
-    dialogTitle = 'Update Available'
+    dialogTitle = "There's a new update"
     dialogIcon = <ArrowDownloadRegular className={styles.icon} />
 
     const hasCommits = updateAvailable.commits && updateAvailable.commits.length > 0
     const hasReleaseNotes =
       updateAvailable.releaseNotes && updateAvailable.releaseNotes.trim().length > 0
+    const isConnectivityCheck = !!updateAvailable.isConnectivityCheck
 
     dialogContent = (
       <div className={styles.updateContent}>
@@ -230,6 +227,13 @@ export function UpdateNotification(): React.ReactElement | null {
               <span className={styles.highlightVersion}>{updateAvailable.version}</span> is
               available.
             </Text>
+
+            {isConnectivityCheck && (
+              <Text>
+                Especially if you are having issues connecting, the new update might be very
+                important.
+              </Text>
+            )}
 
             {updateAvailable.releaseDate && (
               <Text size="small">
@@ -303,12 +307,12 @@ export function UpdateNotification(): React.ReactElement | null {
                 <Button
                   appearance="transparent"
                   size="small"
-                  onClick={() => window.api.updates?.openRepositoryPage?.()}
+                  onClick={() => window.api.updates?.openReleasesPage?.()}
                   style={{ padding: '0', height: 'auto', minHeight: 'auto' }}
                 >
-                  GitHub repository (https://github.com/jimzrt/apprenticeVr)
+                  latest release page
                 </Button>{' '}
-                for full changelog and project details.
+                to download the newest build.
               </Text>
             </div>
           </div>
@@ -343,16 +347,13 @@ export function UpdateNotification(): React.ReactElement | null {
                 <Button appearance="secondary" onClick={handleDismiss}>
                   Remind Me Later
                 </Button>
-                <Button appearance="secondary" onClick={handleViewReleases}>
-                  View Releases
-                </Button>
                 <Button
                   appearance="primary"
                   onClick={handleDownload}
                   disabled={!updateAvailable.downloadUrl}
                   icon={<ArrowDownloadRegular />}
                 >
-                  Download Update
+                  Open Latest Release
                 </Button>
               </>
             ) : (

@@ -2,6 +2,11 @@ name: Create Release
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 2.2.0). Used as the release tag, app version, and written into update.txt.'
+        required: true
+        type: string
   push:
     tags:
       - 'v*.*.*'
@@ -10,7 +15,10 @@ jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    # A single-OS failure should not cancel the sibling builds or block the release job.
+    continue-on-error: true
     strategy:
+      fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
 
@@ -48,10 +56,31 @@ jobs:
       - name: Determine build command and artifact path
         id: build_details
         shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           PRODUCT_NAME=$(node -p "require('./package.json').name")
-          VERSION=$(node -p "require('./package.json').version")
+
+          # Resolve the version from: workflow_dispatch input, pushed tag, or package.json.
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="${INPUT_VERSION#v}"
+          elif [[ "$REF_NAME" == v*.*.* ]]; then
+            VERSION="${REF_NAME#v}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+
+          echo "Using version: $VERSION"
           echo "package_version=${VERSION}" >> $GITHUB_OUTPUT
+
+          # Pin the version into package.json so electron-builder embeds it in the artifact
+          # names AND so app.getVersion() returns the correct value inside the app.
+          export VERSION
+          node -e "const fs=require('fs');const p=require('./package.json');p.version=process.env.VERSION;fs.writeFileSync('./package.json',JSON.stringify(p,null,2)+'\n');"
+          # Also pin the version into update.txt so the in-app update checker and the
+          # committed update.txt on main agree for the freshly released build.
+          printf '%s\n' "$VERSION" > update.txt
 
           OUTPUT_DIR="dist"
 
@@ -88,31 +117,84 @@ jobs:
         with:
           name: build-artifact-${{ matrix.os }}
           path: ${{ steps.build_details.outputs.ARTIFACT_PATH }}
-          if-no-files-found: error
+          if-no-files-found: warn
 
   create_release:
     name: Create GitHub Release
     needs: build
+    # Run the release step even if one or more OS builds failed, so the successful
+    # artifacts still get published.
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          JOB_VERSION: ${{ needs.build.outputs.package_version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="${INPUT_VERSION#v}"
+          elif [ -n "$JOB_VERSION" ]; then
+            VERSION="${JOB_VERSION#v}"
+          elif [[ "$REF_NAME" == v*.*.* ]]; then
+            VERSION="${REF_NAME#v}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Resolved release version: $VERSION"
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      - name: List downloaded artifacts
+        shell: bash
+        run: |
+          echo "Contents of artifacts directory:"
+          ls -laR artifacts || true
+
+      - name: Update update.txt to point at the new release
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$DEFAULT_BRANCH"
+          git checkout -B "$DEFAULT_BRANCH" "origin/$DEFAULT_BRANCH"
+          printf '%s\n' "$VERSION" > update.txt
+          if git diff --quiet update.txt; then
+            echo "update.txt already contains v$VERSION on $DEFAULT_BRANCH; nothing to commit."
+          else
+            git add update.txt
+            git commit -m "chore: bump update.txt to v$VERSION"
+            git push origin "$DEFAULT_BRANCH"
+          fi
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2.2.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ needs.build.outputs.package_version }}
-          name: Release v${{ needs.build.outputs.package_version }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
           draft: true
           prerelease: false
           generate_release_notes: true
+          fail_on_unmatched_files: false
           files: |
             artifacts/build-artifact-windows-latest/*
             artifacts/build-artifact-macos-latest/*
             artifacts/build-artifact-ubuntu-latest/*
+            update.txt

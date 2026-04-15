@@ -1,4 +1,4 @@
-import { Settings, SettingsAPI } from '@shared/types'
+import { Settings, SettingsAPI, ServerConfigInfo } from '@shared/types'
 import { app, nativeTheme } from 'electron'
 import { join } from 'path'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
@@ -18,7 +18,8 @@ class SettingsService extends EventEmitter implements SettingsAPI {
       downloadSpeedLimit: 0,
       uploadSpeedLimit: 0,
       hideAdultContent: true,
-      colorScheme: nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
+      colorScheme: nativeTheme.shouldUseDarkColors ? 'dark' : 'light',
+      serverConfig: { baseUri: '', password: '' }
     }
 
     // Load settings from disk
@@ -63,6 +64,22 @@ class SettingsService extends EventEmitter implements SettingsAPI {
     this.settings.colorScheme = scheme
     this.saveSettings()
     this.emit('color-scheme-changed', scheme)
+  }
+
+  getServerConfig(): ServerConfigInfo {
+    return {
+      baseUri: this.settings.serverConfig?.baseUri ?? '',
+      password: this.settings.serverConfig?.password ?? ''
+    }
+  }
+
+  setServerConfig(config: ServerConfigInfo): void {
+    this.settings.serverConfig = {
+      baseUri: config.baseUri ?? '',
+      password: config.password ?? ''
+    }
+    this.saveSettings()
+    this.emit('server-config-changed', this.settings.serverConfig)
   }
 
   private loadSettings(): void {

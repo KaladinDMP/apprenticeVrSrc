@@ -17,6 +17,9 @@ declare global {
   interface Window {
     ipcRenderer: IpcRenderer
     api: {
+      app: {
+        getVersion: () => Promise<string>
+      }
       dependency: DependencyAPIRenderer
       adb: AdbAPIRenderer
       games: GameAPIRenderer

@@ -164,6 +164,10 @@ export interface UpdateInfo {
   releaseDate?: string
   downloadUrl?: string
   commits?: CommitInfo[]
+  // When true, this update notification was triggered by the lightweight
+  // update.txt check. The UI shows a simpler popup that emphasises that
+  // updating may resolve connectivity issues.
+  isConnectivityCheck?: boolean
 }
 
 export interface UpdateProgressInfo {
@@ -309,12 +313,18 @@ export interface UpdateAPIRenderer extends UpdateAPI {
   onUpdateError: (callback: (error: Error) => void) => () => void
 }
 
+export interface ServerConfigInfo {
+  baseUri: string
+  password: string
+}
+
 export interface Settings {
   downloadPath: string
   downloadSpeedLimit: number
   uploadSpeedLimit: number
   hideAdultContent: boolean
   colorScheme: 'light' | 'dark'
+  serverConfig: ServerConfigInfo
 }
 
 export interface SettingsAPI {
@@ -326,6 +336,8 @@ export interface SettingsAPI {
   setUploadSpeedLimit: (limit: number) => void
   getColorScheme: () => 'light' | 'dark'
   setColorScheme: (scheme: 'light' | 'dark') => void
+  getServerConfig: () => ServerConfigInfo
+  setServerConfig: (config: ServerConfigInfo) => void
 }
 
 export interface SettingsAPIRenderer
@@ -340,6 +352,8 @@ export interface SettingsAPIRenderer
       setUploadSpeedLimit: (limit: number) => Promise<void>
       getColorScheme: () => Promise<'light' | 'dark'>
       setColorScheme: (scheme: 'light' | 'dark') => Promise<void>
+      getServerConfig: () => Promise<ServerConfigInfo>
+      setServerConfig: (config: ServerConfigInfo) => Promise<void>
     }
   > {}
 

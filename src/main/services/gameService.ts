@@ -1,10 +1,11 @@
 import { join } from 'path'
 import { promises as fs, readdirSync } from 'fs'
 import { execa } from 'execa'
-import { app, BrowserWindow, dialog, shell } from 'electron'
+import { app, BrowserWindow, dialog } from 'electron'
 import { existsSync } from 'fs'
 import dependencyService from './dependencyService'
 import mirrorService from './mirrorService'
+import settingsService from './settingsService'
 import { GameInfo, ServiceStatus, GamesAPI, BlacklistEntry } from '@shared/types'
 import EventEmitter from 'events'
 import { typedWebContentsSend } from '@shared/ipc-utils'
@@ -84,26 +85,48 @@ class GameService extends EventEmitter implements GamesAPI {
 
   private async loadConfig(): Promise<void> {
     try {
+      // Always prefer the in-app settings value (source of truth) if populated.
+      const fromSettings = settingsService.getServerConfig()
+      let diskConfig: VrpConfig | null = null
+
       const exists = await fileExists(this.configPath)
       if (exists) {
-        const data = await fs.readFile(this.configPath, 'utf-8')
-        this.vrpConfig = JSON.parse(data)
-
-        // Convert lastSync string to Date object if it exists
-        if (this.vrpConfig?.lastSync) {
-          this.vrpConfig.lastSync = new Date(this.vrpConfig.lastSync)
+        try {
+          const data = await fs.readFile(this.configPath, 'utf-8')
+          diskConfig = JSON.parse(data)
+          if (diskConfig?.lastSync) {
+            diskConfig.lastSync = new Date(diskConfig.lastSync)
+          }
+        } catch (err) {
+          console.warn('Failed to read cached vrp-config.json:', err)
         }
-
-        console.log(
-          'Loaded config from disk - baseUri:',
-          !!this.vrpConfig?.baseUri,
-          'password:',
-          !!this.vrpConfig?.password
-        )
-      } else {
-        console.log('No config file found at', this.configPath)
-        await this.fetchVrpPublicInfo()
       }
+
+      if (fromSettings.baseUri && fromSettings.password) {
+        this.vrpConfig = {
+          baseUri: fromSettings.baseUri,
+          password: fromSettings.password,
+          lastSync: diskConfig?.lastSync
+        }
+        console.log('Loaded server config from settings - baseUri:', !!this.vrpConfig.baseUri)
+        // Keep vrp-config.json in sync with the settings values.
+        await this.saveConfig()
+        return
+      }
+
+      if (diskConfig && diskConfig.baseUri && diskConfig.password) {
+        this.vrpConfig = diskConfig
+        // Migrate legacy values into settings so they become editable in the UI.
+        settingsService.setServerConfig({
+          baseUri: diskConfig.baseUri,
+          password: diskConfig.password
+        })
+        console.log('Loaded server config from vrp-config.json and migrated to settings')
+        return
+      }
+
+      console.log('No server credentials configured yet; prompting user.')
+      await this.fetchVrpPublicInfo()
     } catch (error) {
       console.error('Error loading configuration:', error)
     }
@@ -192,58 +215,71 @@ class GameService extends EventEmitter implements GamesAPI {
 
   private async fetchVrpPublicInfo(): Promise<void> {
     try {
-      // Try user-editable ServerInfo.json in userData first, then fall back to bundled resource
       let data: VrpConfig | null = null
 
-      const userFile = this.serverInfoPath
-      const bundledFile = join(process.resourcesPath, 'ServerInfo.json')
+      // 1) Preferred source: in-app settings (user can paste JSON or fill fields in Settings UI)
+      const settingsConfig = settingsService.getServerConfig()
+      if (settingsConfig.baseUri && settingsConfig.password) {
+        data = {
+          baseUri: settingsConfig.baseUri,
+          password: settingsConfig.password
+        }
+        console.log('Server config loaded from in-app settings')
+      }
 
-      for (const filePath of [userFile, bundledFile]) {
-        try {
-          const exists = await fileExists(filePath)
-          if (exists) {
-            const raw = await fs.readFile(filePath, 'utf-8')
-            data = JSON.parse(raw) as VrpConfig
-            console.log('Server config loaded from:', filePath)
-            break
+      // 2) Fall back to legacy ServerInfo.json locations for backwards compatibility.
+      //    If found and valid, migrate the values into the settings store so the
+      //    user never has to touch the file again.
+      if (!data) {
+        const userFile = this.serverInfoPath
+        const bundledFile = join(process.resourcesPath, 'ServerInfo.json')
+
+        for (const filePath of [userFile, bundledFile]) {
+          try {
+            const exists = await fileExists(filePath)
+            if (exists) {
+              const raw = await fs.readFile(filePath, 'utf-8')
+              const parsed = JSON.parse(raw) as VrpConfig
+              if (parsed?.baseUri && parsed?.password) {
+                data = parsed
+                console.log('Server config loaded from legacy file:', filePath)
+                // Migrate into settings so this becomes the source of truth.
+                settingsService.setServerConfig({
+                  baseUri: parsed.baseUri,
+                  password: parsed.password
+                })
+                break
+              }
+            }
+          } catch (err) {
+            console.warn('Failed to read ServerInfo.json from', filePath, err)
           }
-        } catch (err) {
-          console.warn('Failed to read ServerInfo.json from', filePath, err)
         }
       }
 
-      // If no file found or credentials are blank, copy the template and prompt the user
+      // If no credentials available, prompt the user to paste them into Settings.
       if (!data || !data.baseUri || !data.password) {
-        // Ensure the user has a copy to edit
-        const userFileExists = await fileExists(userFile)
-        if (!userFileExists) {
-          const bundledExists = await fileExists(bundledFile)
-          if (bundledExists) {
-            await fs.copyFile(bundledFile, userFile)
-          } else {
-            await fs.writeFile(userFile, JSON.stringify({ baseUri: '', password: '' }), 'utf-8')
-          }
-        }
+        await dialog
+          .showMessageBox({
+            type: 'info',
+            title: 'Server Configuration Required',
+            message: 'Please configure your server credentials',
+            detail:
+              `Server credentials have not been configured.\n\n` +
+              `Open the app's Settings page and paste your server config JSON into the\n` +
+              `"Server Configuration" section, e.g.:\n\n` +
+              `{"baseUri":"https://your-url-here/","password":"your-password-here"}\n\n` +
+              `You can also enter baseUri and password individually. Click "Save", then\n` +
+              `restart the app (or resync game data) to continue.`,
+            buttons: ['OK']
+          })
+          .catch(() => {
+            /* no-op */
+          })
 
-        await dialog.showMessageBox({
-          type: 'info',
-          title: 'Server Configuration Required',
-          message: 'Please configure your server credentials',
-          detail:
-            `A ServerInfo.json file has been created at:\n\n` +
-            `${userFile}\n\n` +
-            `Open this file in a text editor and fill in your baseUri and password.\n` +
-            `IMPORTANT: The file must use Linux/LF line endings (not Windows/CRLF).\n\n` +
-            `{"baseUri":"https://your-url-here/","password":"your-password-here"}\n\n` +
-            `Then restart the app.`,
-          buttons: ['Open File Location', 'OK']
-        }).then((result) => {
-          if (result.response === 0) {
-            shell.showItemInFolder(userFile)
-          }
-        })
-
-        throw new Error('Server credentials not configured. Please edit ServerInfo.json and restart.')
+        throw new Error(
+          'Server credentials not configured. Please add them in Settings > Server Configuration.'
+        )
       }
 
       this.vrpConfig = data

@@ -1,4 +1,5 @@
 import React, { ReactNode, useEffect, useState, useCallback, useMemo } from 'react'
+import { ServerConfigInfo } from '@shared/types'
 import { SettingsContext, SettingsContextType } from './SettingsContext'
 
 interface SettingsProviderProps {
@@ -12,6 +13,10 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const [colorScheme, setColorSchemeState] = useState<'light' | 'dark'>(
     window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   )
+  const [serverConfig, setServerConfigState] = useState<ServerConfigInfo>({
+    baseUri: '',
+    password: ''
+  })
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -21,11 +26,12 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
     const loadSettings = async (): Promise<void> => {
       try {
-        const [path, downloadLimit, uploadLimit, colorScheme] = await Promise.all([
+        const [path, downloadLimit, uploadLimit, colorScheme, server] = await Promise.all([
           window.api.settings.getDownloadPath(),
           window.api.settings.getDownloadSpeedLimit(),
           window.api.settings.getUploadSpeedLimit(),
-          window.api.settings.getColorScheme()
+          window.api.settings.getColorScheme(),
+          window.api.settings.getServerConfig()
         ])
 
         if (isMounted) {
@@ -36,6 +42,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           setDownloadSpeedLimitState(downloadLimit)
           setUploadSpeedLimitState(uploadLimit)
           setColorSchemeState(colorScheme)
+          setServerConfigState(server)
         }
       } catch (err) {
         console.error('Error fetching settings:', err)
@@ -119,20 +126,50 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   }, [])
 
+  const setServerConfig = useCallback(async (config: ServerConfigInfo): Promise<void> => {
+    try {
+      setIsLoading(true)
+      await window.api.settings.setServerConfig(config)
+      setServerConfigState(config)
+      setError(null)
+    } catch (err) {
+      console.error('Error setting server config:', err)
+      setError('Failed to update server configuration')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
   const value = useMemo<SettingsContextType>(
     () => ({
       downloadPath,
       downloadSpeedLimit,
       uploadSpeedLimit,
       colorScheme,
+      serverConfig,
       isLoading,
       error,
       setDownloadPath,
       setDownloadSpeedLimit,
       setUploadSpeedLimit,
-      setColorScheme
+      setColorScheme,
+      setServerConfig
     }),
-    [downloadPath, downloadSpeedLimit, uploadSpeedLimit, colorScheme, isLoading, error, setDownloadPath, setDownloadSpeedLimit, setUploadSpeedLimit, setColorScheme]
+    [
+      downloadPath,
+      downloadSpeedLimit,
+      uploadSpeedLimit,
+      colorScheme,
+      serverConfig,
+      isLoading,
+      error,
+      setDownloadPath,
+      setDownloadSpeedLimit,
+      setUploadSpeedLimit,
+      setColorScheme,
+      setServerConfig
+    ]
   )
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

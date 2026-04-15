@@ -12,6 +12,7 @@ import {
   BlacklistEntry,
   Mirror,
   MirrorTestResult,
+  ServerConfigInfo,
   WiFiBookmark
 } from './index'
 
@@ -78,6 +79,9 @@ export interface IPCChannels {
     boolean
   >
 
+  // App info
+  'app:get-version': DefineChannel<[], string>
+
   // Update related channels
   'update:check-for-updates': DefineChannel<[], void>
 
@@ -90,6 +94,8 @@ export interface IPCChannels {
   'settings:set-upload-speed-limit': DefineChannel<[limit: number], void>
   'settings:get-color-scheme': DefineChannel<[], 'light' | 'dark'>
   'settings:set-color-scheme': DefineChannel<[scheme: 'light' | 'dark'], void>
+  'settings:get-server-config': DefineChannel<[], ServerConfigInfo>
+  'settings:set-server-config': DefineChannel<[config: ServerConfigInfo], void>
 
   // Log upload related channels
   'logs:upload-current': DefineChannel<[], { url: string; password: string } | null>

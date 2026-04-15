@@ -20,11 +20,15 @@ import {
   LogsAPIRenderer,
   MirrorAPIRenderer,
   Mirror,
+  ServerConfigInfo,
   WiFiBookmark
 } from '@shared/types'
 import { typedIpcRenderer } from '@shared/ipc-utils'
 
 const api = {
+  app: {
+    getVersion: (): Promise<string> => typedIpcRenderer.invoke('app:get-version')
+  },
   dependency: {
     getStatus: (): Promise<DependencyStatus> => typedIpcRenderer.invoke('dependency:get-status')
   } satisfies DependencyAPIRenderer,
@@ -202,7 +206,11 @@ const api = {
     getColorScheme: (): Promise<'light' | 'dark'> =>
       typedIpcRenderer.invoke('settings:get-color-scheme'),
     setColorScheme: (scheme: 'light' | 'dark'): Promise<void> =>
-      typedIpcRenderer.invoke('settings:set-color-scheme', scheme)
+      typedIpcRenderer.invoke('settings:set-color-scheme', scheme),
+    getServerConfig: (): Promise<ServerConfigInfo> =>
+      typedIpcRenderer.invoke('settings:get-server-config'),
+    setServerConfig: (config: ServerConfigInfo): Promise<void> =>
+      typedIpcRenderer.invoke('settings:set-server-config', config)
   } satisfies SettingsAPIRenderer,
   // Logs APIs
   logs: {
