@@ -43,12 +43,14 @@ chmod +x apprenticevr-x.x.x-x86_64.AppImage
 
 ## Step 2: Get Your Server Credentials
 
-ApprenticeVR connects to a community-run VR game library. Access requires a **Base URL** and a **Password** that you obtain from the VRP community (VRPirates).
+ApprenticeVR connects to community-run VR game servers. Access requires a **Base URL** and a **Password**. Here's where to find them:
 
-- **Where to get them:** Join the VRP community through their site at [vrpirates.wiki](https://vrpirates.wiki). Supporters receive the `baseUri` and `password` needed to access the game library.
-- **What they look like:**
-  - `baseUri` — a URL ending in `/`, for example: `https://community-server.example.com/`
-  - `password` — a base64-encoded string used to decrypt the game metadata archive
+- **Telegram (fastest):** Join [t.me/the_vrSrc](https://t.me/the_vrSrc) — pinned messages contain the current credentials. No Telegram account? Use the web preview at [t.me/s/the_vrSrc](https://t.me/s/the_vrSrc).
+- **r/QuestPiracy Megathread:** The Public Server JSON page at [qpmegathread.top/pages/public-json.html](https://qpmegathread.top/pages/public-json.html) lists available public servers with their credentials.
+
+Credentials look like this:
+- `baseUri` — a URL ending in `/`, for example: `https://community-server.example.com/`
+- `password` — a base64-encoded string used to decrypt the game metadata archive
 
 Keep these private. Do not share them publicly.
 
@@ -58,12 +60,12 @@ Keep these private. Do not share them publicly.
 
 On first launch the app will show a prompt if no credentials are found. You have two ways to enter them:
 
-### Option A: Settings UI (Recommended)
+### Option A: In-app (Recommended)
 
-1. Open ApprenticeVR and go to the **Settings** tab
-2. Find the **Server Configuration** section
-3. Paste your **Base URL** and **Password** into the fields
-4. Click Save — no restart needed
+1. Open ApprenticeVR and go to the **Settings** tab (or the Mirror Management section)
+2. Click **Set Public Server JSON**
+3. Paste the full JSON blob into the text area and click **Apply JSON to fields**, or type the Base URI and Password directly
+4. Click **Save** — no restart needed
 
 ### Option B: ServerInfo.json file
 
@@ -146,6 +148,12 @@ Moved 5 renderer-only packages (`@fluentui/*`, `@tanstack/*`, `date-fns`) to `de
 
 ### 13. Game List File Resolution by Suffix Match
 Replaced the hardcoded `VRP-GameList.txt` path with dynamic suffix-match resolution (`*amelist.txt`). The server naming convention changed; `loadGameList()` now scans the data directory and matches any file ending in `amelist.txt`.
+
+### 14. Mirror Management UI Redesign
+Reorganized the server configuration page to make the two download methods distinct and clear:
+- **"Set Public Server JSON"** (previously "Server Config") opens a dialog to enter your `baseUri` and `password`. Supports paste-to-parse for the full JSON blob.
+- **"Set Rclone Config"** is a collapsible toggle that reveals the rclone mirror controls — Test All, Import from File, and Add Mirror — only when expanded. These were previously scattered alongside the Server Config button regardless of which method you use.
+- The status card below the buttons now shows which method is currently active: **Public Server JSON**, **Rclone Config (mirror name)**, or a prompt to configure one if neither is set.
 
 ---
 
