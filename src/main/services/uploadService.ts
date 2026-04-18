@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { promises as fs, existsSync } from 'fs'
 import { join, dirname, basename } from 'path'
+import { hostname, userInfo } from 'os'
 import { EventEmitter } from 'events'
 import crypto from 'crypto'
 import { execa } from 'execa'
@@ -319,6 +320,107 @@ class UploadService extends EventEmitter {
     }
   }
 
+  private generateMachineHwid(): string {
+    const info = `${hostname()}-${userInfo().username}`
+    return crypto.createHash('sha256').update(info).digest('hex')
+  }
+
+  private parseAXML(buf: Buffer): { packageName: string; versionCode: number } {
+    if (buf.length < 8 || buf.readUInt16LE(0) !== 0x0003 || buf.readUInt16LE(2) !== 0x0008) {
+      throw new Error('Not a valid Android binary XML')
+    }
+
+    const spStart = 8
+    if (buf.readUInt16LE(spStart) !== 0x0001) throw new Error('Expected string pool chunk')
+
+    const spSize = buf.readUInt32LE(spStart + 4)
+    const numStrings = buf.readUInt32LE(spStart + 8)
+    const flags = buf.readUInt32LE(spStart + 16)
+    const stringsStart = buf.readUInt32LE(spStart + 20)
+    const isUtf8 = (flags & 0x100) !== 0
+    const offsetsBase = spStart + 28
+    const strDataBase = spStart + stringsStart
+
+    const strings: string[] = []
+    for (let i = 0; i < numStrings; i++) {
+      const strOff = buf.readUInt32LE(offsetsBase + i * 4)
+      let p = strDataBase + strOff
+      try {
+        if (isUtf8) {
+          const b0 = buf.readUInt8(p)
+          p += b0 & 0x80 ? 2 : 1
+          const b1 = buf.readUInt8(p)
+          const u8len = b1 & 0x80 ? ((b1 & 0x7f) << 8) | buf.readUInt8(p + 1) : b1
+          p += b1 & 0x80 ? 2 : 1
+          strings.push(buf.slice(p, p + u8len).toString('utf8'))
+        } else {
+          const charLen = buf.readUInt16LE(p)
+          strings.push(buf.slice(p + 2, p + 2 + charLen * 2).toString('utf16le'))
+        }
+      } catch {
+        strings.push('')
+      }
+    }
+
+    let pos = spStart + spSize
+    let packageName = ''
+    let versionCode = 0
+
+    while (pos + 8 <= buf.length) {
+      const chunkType = buf.readUInt16LE(pos)
+      const chunkSize = buf.readUInt32LE(pos + 4)
+      if (chunkSize < 8 || pos + chunkSize > buf.length) break
+
+      if (chunkType === 0x0102) {
+        const nameIdx = buf.readInt32LE(pos + 20)
+        if (nameIdx >= 0 && nameIdx < strings.length && strings[nameIdx] === 'manifest') {
+          const attrCount = buf.readUInt16LE(pos + 28)
+          const attrBase = pos + 36
+          for (let i = 0; i < attrCount; i++) {
+            const ab = attrBase + i * 20
+            if (ab + 20 > buf.length) break
+            const ni = buf.readInt32LE(ab + 4)
+            const attrName = ni >= 0 && ni < strings.length ? strings[ni] : ''
+            const dataType = buf.readUInt8(ab + 15)
+            const data = buf.readInt32LE(ab + 16)
+            if (attrName === 'package' && dataType === 0x03 && data >= 0 && data < strings.length) {
+              packageName = strings[data]
+            } else if (attrName === 'versionCode' && (dataType === 0x10 || dataType === 0x11)) {
+              versionCode = data > 0 ? data : 0
+            }
+          }
+          if (packageName) break
+        }
+      }
+      pos += chunkSize
+    }
+
+    if (!packageName) throw new Error('Could not extract package name from AndroidManifest.xml')
+    return { packageName, versionCode }
+  }
+
+  private async getApkInfo(
+    apkPath: string
+  ): Promise<{ packageName: string; versionCode: number }> {
+    const sevenZipPath = dependencyService.get7zPath()
+    const tmpDir = join(this.uploadsBasePath, `apk_parse_${Date.now()}`)
+    try {
+      await fs.mkdir(tmpDir, { recursive: true })
+      await new Promise<void>((resolve, reject) => {
+        const stream = SevenZip.extractFull(apkPath, tmpDir, {
+          $bin: sevenZipPath,
+          $cherryPick: 'AndroidManifest.xml'
+        })
+        stream.on('end', resolve)
+        stream.on('error', reject)
+      })
+      const buf = await fs.readFile(join(tmpDir, 'AndroidManifest.xml'))
+      return this.parseAXML(buf)
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {})
+    }
+  }
+
   private async validateLocalFolder(folderPath: string): Promise<void> {
     const entries = await fs.readdir(folderPath)
     const apkFiles = entries.filter((e) => e.toLowerCase().endsWith('.apk'))
@@ -349,53 +451,85 @@ class UploadService extends EventEmitter {
         this.updateItemStatus(item.packageName, 'Completed', 100, 'Complete')
         return true
       } else {
-        // Compress folder contents then upload
+        // Build a staging folder with all contents + HWID.txt, then compress and upload
         this.updateProgress(item.packageName, UploadStage.Compressing, 0)
 
         const sevenZipPath = dependencyService.get7zPath()
         if (!sevenZipPath) throw new Error('7zip not found. Cannot create zip archive.')
 
-        const safeGameName = item.gameName.replace(/[<>:"/\\|?*]/g, '_')
-        const zipFilePath = join(this.uploadsBasePath, `${safeGameName}.zip`)
+        const hwid = this.generateMachineHwid()
+        const hwidPrefix = hwid.substring(0, 1)
 
-        if (existsSync(zipFilePath)) {
-          await fs.unlink(zipFilePath)
-        }
+        const stagingDir = join(this.uploadsBasePath, `staging_${Date.now()}`)
+        await fs.mkdir(stagingDir, { recursive: true })
 
-        await new Promise<void>((resolve, reject) => {
-          const myStream = SevenZip.add(zipFilePath, `${item.sourcePath}/*`, {
-            $bin: sevenZipPath,
-            $progress: true
-          })
-
-          if (!myStream) {
-            reject(new Error('Failed to start 7zip compression process.'))
-            return
+        try {
+          // Copy source folder contents into staging
+          const entries = await fs.readdir(item.sourcePath!, { withFileTypes: true })
+          for (const entry of entries) {
+            const src = join(item.sourcePath!, entry.name)
+            const dst = join(stagingDir, entry.name)
+            if (entry.isDirectory()) {
+              await fs.cp(src, dst, { recursive: true })
+            } else {
+              await fs.copyFile(src, dst)
+            }
           }
 
-          this.activeCompression = myStream
+          // Add HWID.txt
+          await fs.writeFile(join(stagingDir, 'HWID.txt'), hwid, 'utf-8')
 
-          myStream.on('progress', (progress) => {
-            this.updateProgress(item.packageName, UploadStage.Compressing, progress.percent)
-          })
-          myStream.on('end', () => {
-            this.activeCompression = null
-            resolve()
-          })
-          myStream.on('error', (error) => {
-            this.activeCompression = null
-            reject(error)
-          })
-        })
+          this.updateProgress(item.packageName, UploadStage.Compressing, 10)
 
-        this.updateProgress(item.packageName, UploadStage.Compressing, 100)
+          const safeGameName = item.gameName.replace(/[<>:"/\\|?*]/g, '_')
+          const zipFileName = `${safeGameName} v${item.versionCode} ${item.packageName} ${hwidPrefix} PC.zip`
+          const zipFilePath = join(this.uploadsBasePath, zipFileName)
 
-        this.updateItemStatus(item.packageName, 'Uploading', 0, 'Uploading to server')
-        this.updateProgress(item.packageName, UploadStage.Uploading, 0)
-        const success = await this.uploadToServer(item.packageName, zipFilePath)
-        if (!success) throw new Error('Upload failed')
-        this.updateItemStatus(item.packageName, 'Completed', 100, 'Complete')
-        return true
+          if (existsSync(zipFilePath)) {
+            await fs.unlink(zipFilePath)
+          }
+
+          await new Promise<void>((resolve, reject) => {
+            const myStream = SevenZip.add(zipFilePath, `${stagingDir}/*`, {
+              $bin: sevenZipPath,
+              $progress: true
+            })
+
+            if (!myStream) {
+              reject(new Error('Failed to start 7zip compression process.'))
+              return
+            }
+
+            this.activeCompression = myStream
+            myStream.on('progress', (progress) => {
+              // Scale 10–90% while compressing
+              this.updateProgress(
+                item.packageName,
+                UploadStage.Compressing,
+                10 + Math.floor(progress.percent * 0.8)
+              )
+            })
+            myStream.on('end', () => {
+              this.activeCompression = null
+              resolve()
+            })
+            myStream.on('error', (error) => {
+              this.activeCompression = null
+              reject(error)
+            })
+          })
+
+          this.updateProgress(item.packageName, UploadStage.Compressing, 100)
+
+          this.updateItemStatus(item.packageName, 'Uploading', 0, 'Uploading to server')
+          this.updateProgress(item.packageName, UploadStage.Uploading, 0)
+          const success = await this.uploadToServer(item.packageName, zipFilePath)
+          if (!success) throw new Error('Upload failed')
+          this.updateItemStatus(item.packageName, 'Completed', 100, 'Complete')
+          return true
+        } finally {
+          await fs.rm(stagingDir, { recursive: true, force: true }).catch(() => {})
+        }
       }
     } catch (error) {
       console.error(`[UploadService] Error processing local upload for ${item.gameName}:`, error)
@@ -444,12 +578,41 @@ class UploadService extends EventEmitter {
       const name = basename(itemPath)
       const isZip = name.toLowerCase().endsWith('.zip')
       const displayName = isZip ? name.slice(0, -4) : name
-      const uniqueId = `local_${crypto.randomBytes(4).toString('hex')}_${Date.now()}`
+
+      // Try to extract real package name / version from the APK for folders
+      let pkgName = `local_${crypto.randomBytes(4).toString('hex')}_${Date.now()}`
+      let versionCode = 0
+      if (!isZip) {
+        try {
+          const entries = await fs.readdir(itemPath)
+          const apkFile = entries.find((e) => e.toLowerCase().endsWith('.apk'))
+          if (apkFile) {
+            const info = await this.getApkInfo(join(itemPath, apkFile))
+            pkgName = info.packageName
+            versionCode = info.versionCode
+            console.log(`[UploadService] APK info: ${pkgName} v${versionCode}`)
+          }
+        } catch (err) {
+          console.warn(`[UploadService] Could not parse APK info for ${itemPath}:`, err)
+        }
+      }
+
+      // Skip if already actively queued
+      const existing = this.findItem(pkgName)
+      if (
+        existing &&
+        existing.status !== 'Error' &&
+        existing.status !== 'Cancelled' &&
+        existing.status !== 'Completed'
+      ) {
+        console.log(`[UploadService] ${pkgName} already in queue, skipping`)
+        continue
+      }
 
       const newItem: UploadItem = {
-        packageName: uniqueId,
+        packageName: pkgName,
         gameName: displayName,
-        versionCode: 0,
+        versionCode,
         deviceId: 'local',
         status: 'Queued',
         progress: 0,
@@ -459,7 +622,7 @@ class UploadService extends EventEmitter {
       }
 
       this.uploadQueue.push(newItem)
-      console.log(`[UploadService] Added local item "${displayName}" to upload queue.`)
+      console.log(`[UploadService] Added local item "${displayName}" (${pkgName} v${versionCode}) to upload queue.`)
     }
 
     this.emitQueueUpdated()
