@@ -78,9 +78,6 @@ jobs:
           # names AND so app.getVersion() returns the correct value inside the app.
           export VERSION
           node -e "const fs=require('fs');const p=require('./package.json');p.version=process.env.VERSION;fs.writeFileSync('./package.json',JSON.stringify(p,null,2)+'\n');"
-          # Also pin the version into update.txt so the in-app update checker and the
-          # committed update.txt on main agree for the freshly released build.
-          printf '%s\n' "$VERSION" > update.txt
 
           OUTPUT_DIR="dist"
 
@@ -88,7 +85,7 @@ jobs:
             echo "BUILD_COMMAND=npx electron-vite build && npx electron-builder --win --x64 --ia32 --publish never" >> $GITHUB_OUTPUT
             echo "ARTIFACT_PATH=${OUTPUT_DIR}/${PRODUCT_NAME}-${VERSION}-*.exe" >> $GITHUB_OUTPUT
           elif [ "$RUNNER_OS" == "macOS" ]; then
-            echo "BUILD_COMMAND=npx electron-vite build && npx electron-builder --mac --x64 --publish never" >> $GITHUB_OUTPUT
+            echo "BUILD_COMMAND=npx electron-vite build && npx electron-builder --mac --x64 --arm64 --publish never" >> $GITHUB_OUTPUT
             echo "ARTIFACT_PATH=${OUTPUT_DIR}/${PRODUCT_NAME}-${VERSION}-*.dmg" >> $GITHUB_OUTPUT
           elif [ "$RUNNER_OS" == "Linux" ]; then
             echo "BUILD_COMMAND=npx electron-vite build && npx electron-builder --linux --x64 --arm64 --publish never" >> $GITHUB_OUTPUT
@@ -99,7 +96,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_BUILDER_DOWNLOAD_TIMEOUT: 120000
-          ELECTRON_BUILDER_BINARIES_MIRROR: https://github.com/electron-userland/electron-builder-binaries/releases/download/
+          ELECTRON_BUILDER_BINARIES_MIRROR: https://mirrors.huaweicloud.com/electron-builder-binaries/
           npm_config_fetch_timeout: 120000
           npm_config_fetch_retry_mintimeout: 20000
           npm_config_fetch_retry_maxtimeout: 120000
@@ -164,25 +161,6 @@ jobs:
           echo "Contents of artifacts directory:"
           ls -laR artifacts || true
 
-      - name: Update update.txt to point at the new release
-        shell: bash
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin "$DEFAULT_BRANCH"
-          git checkout -B "$DEFAULT_BRANCH" "origin/$DEFAULT_BRANCH"
-          printf '%s\n' "$VERSION" > update.txt
-          if git diff --quiet update.txt; then
-            echo "update.txt already contains v$VERSION on $DEFAULT_BRANCH; nothing to commit."
-          else
-            git add update.txt
-            git commit -m "chore: bump update.txt to v$VERSION"
-            git push origin "$DEFAULT_BRANCH"
-          fi
-
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2.2.2
         env:
@@ -198,4 +176,3 @@ jobs:
             artifacts/build-artifact-windows-latest/*
             artifacts/build-artifact-macos-latest/*
             artifacts/build-artifact-ubuntu-latest/*
-            update.txt
