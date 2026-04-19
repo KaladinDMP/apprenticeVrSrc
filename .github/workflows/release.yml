@@ -92,11 +92,26 @@ jobs:
             echo "ARTIFACT_PATH=${OUTPUT_DIR}/${PRODUCT_NAME}-${VERSION}-*.[Ad]*" >> $GITHUB_OUTPUT
           fi
 
+      - name: Pre-cache arm64 dmg-builder binary (macOS only)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          CACHE_DIR="$HOME/Library/Caches/electron-builder/dmg-builder/1.2.0"
+          FILE="$CACHE_DIR/dmgbuild-bundle-arm64-75c8a6c.tar.gz"
+          mkdir -p "$CACHE_DIR"
+          if [ ! -f "$FILE" ]; then
+            echo "Downloading arm64 dmg-builder from Huawei mirror..."
+            curl -fL -o "$FILE" \
+              "https://mirrors.huaweicloud.com/electron-builder-binaries/dmg-builder@1.2.0/dmgbuild-bundle-arm64-75c8a6c.tar.gz"
+            echo "Done."
+          else
+            echo "arm64 dmg-builder already cached."
+          fi
+
       - name: Build application
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_BUILDER_DOWNLOAD_TIMEOUT: 120000
-          ELECTRON_BUILDER_BINARIES_MIRROR: https://mirrors.huaweicloud.com/electron-builder-binaries/
           npm_config_fetch_timeout: 120000
           npm_config_fetch_retry_mintimeout: 20000
           npm_config_fetch_retry_maxtimeout: 120000
