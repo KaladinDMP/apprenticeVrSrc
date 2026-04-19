@@ -37,6 +37,7 @@ import {
 } from '@fluentui/react-icons'
 import { useMirrors } from '../hooks/useMirrors'
 import { useSettings } from '../hooks/useSettings'
+import { useLanguage } from '../hooks/useLanguage'
 import { Mirror } from '@shared/types'
 import ServerConfigSettings from './ServerConfigSettings'
 
@@ -106,6 +107,7 @@ const useStyles = makeStyles({
 
 const MirrorManagement: React.FC = () => {
   const styles = useStyles()
+  const { t } = useLanguage()
   const {
     mirrors,
     isLoading,
@@ -156,7 +158,7 @@ const MirrorManagement: React.FC = () => {
   }
 
   const handleRemoveMirror = async (id: string): Promise<void> => {
-    if (window.confirm('Are you sure you want to remove this mirror?')) {
+    if (window.confirm(t('confirmRemoveMirror'))) {
       await removeMirror(id)
     }
   }
@@ -192,23 +194,23 @@ const MirrorManagement: React.FC = () => {
 
   const getStatusText = (mirror: Mirror): string => {
     if (testingMirrors.has(mirror.id)) {
-      return 'Testing...'
+      return t('testing')
     }
 
     switch (mirror.testStatus) {
       case 'success':
-        return 'Online'
+        return t('online')
       case 'failed':
-        return 'Failed'
+        return t('mirrorFailed')
       case 'testing':
-        return 'Testing...'
+        return t('testing')
       default:
-        return 'Untested'
+        return t('untested')
     }
   }
 
   const formatLastTested = (date?: Date): string => {
-    if (!date) return 'Never'
+    if (!date) return t('never')
     return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(
       Math.round((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
       'day'
@@ -217,12 +219,12 @@ const MirrorManagement: React.FC = () => {
 
   const getServerStatusText = (): string => {
     if (activeMirror) {
-      return `Active method: Rclone Config (${activeMirror.name})`
+      return `${t('activeRcloneConfig')} (${activeMirror.name})`
     }
     if (hasPublicConfig) {
-      return 'Active method: Public Server JSON'
+      return t('activePublicServer')
     }
-    return 'No server method configured. Use Set Public Server JSON or Set Rclone Config to get started.'
+    return t('noServerConfigured')
   }
 
   const getServerStatusColor = (): string => {
@@ -250,7 +252,7 @@ const MirrorManagement: React.FC = () => {
           iconPosition="before"
           onClick={() => setShowRcloneSection((v) => !v)}
         >
-          Set Rclone Config
+          {t('setRcloneConfig')}
           {mirrors.length > 0 ? ` (${mirrors.length})` : ''}
           {showRcloneSection ? (
             <ChevronUpRegular style={{ marginLeft: tokens.spacingHorizontalXS }} />
@@ -299,7 +301,7 @@ const MirrorManagement: React.FC = () => {
               onClick={handleTestAll}
               disabled={mirrors.length === 0}
             >
-              Test All
+              {t('testAll')}
             </Button>
             <Button
               appearance="secondary"
@@ -307,22 +309,19 @@ const MirrorManagement: React.FC = () => {
               onClick={handleImportFromFile}
               disabled={isImporting}
             >
-              {isImporting ? <Spinner size="tiny" /> : 'Import from File'}
+              {isImporting ? <Spinner size="tiny" /> : t('importFromFile')}
             </Button>
             <Dialog open={showAddDialog} onOpenChange={(_, data) => setShowAddDialog(data.open)}>
               <DialogTrigger disableButtonEnhancement>
                 <Button appearance="primary" icon={<AddRegular />}>
-                  Add Mirror
+                  {t('addMirror')}
                 </Button>
               </DialogTrigger>
               <DialogSurface>
-                <DialogTitle>Add New Mirror</DialogTitle>
+                <DialogTitle>{t('addNewMirror')}</DialogTitle>
                 <DialogContent className={styles.dialogContent}>
                   <DialogBody>
-                    <Text>
-                      Paste your mirror configuration file content below. The configuration should
-                      be in INI format.
-                    </Text>
+                    <Text>{t('addMirrorDesc')}</Text>
                     <Textarea
                       placeholder={`Example:
 [mirror01]
@@ -343,14 +342,14 @@ pass = password`}
                       onClick={() => setShowAddDialog(false)}
                       disabled={isAdding}
                     >
-                      Cancel
+                      {t('cancel')}
                     </Button>
                     <Button
                       appearance="primary"
                       onClick={handleAddMirror}
                       disabled={!configContent.trim() || isAdding}
                     >
-                      {isAdding ? <Spinner size="tiny" /> : 'Add Mirror'}
+                      {isAdding ? <Spinner size="tiny" /> : t('addMirror')}
                     </Button>
                   </DialogActions>
                 </DialogContent>
@@ -366,13 +365,13 @@ pass = password`}
                 padding: tokens.spacingVerticalXL
               }}
             >
-              <Spinner size="medium" label="Loading mirrors..." />
+              <Spinner size="medium" label={t('loadingMirrors')} />
             </div>
           ) : mirrors.length === 0 ? (
             <Card>
               <CardPreview>
                 <div style={{ padding: tokens.spacingVerticalXL, textAlign: 'center' }}>
-                  <Text>No rclone mirrors configured. Import from file or add one manually.</Text>
+                  <Text>{t('noMirrorsConfigured')}</Text>
                 </div>
               </CardPreview>
             </Card>
@@ -428,7 +427,7 @@ pass = password`}
                   <CardPreview>
                     <div style={{ padding: tokens.spacingVerticalS }}>
                       <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-                        Last tested: {formatLastTested(mirror.lastTested)}
+                        {t('lastTested')} {formatLastTested(mirror.lastTested)}
                       </Text>
                       {mirror.testError && (
                         <Text size={100} style={{ color: tokens.colorPaletteRedForeground1 }}>
@@ -446,7 +445,7 @@ pass = password`}
                           }}
                           disabled={testingMirrors.has(mirror.id)}
                         >
-                          Test
+                          {t('test')}
                         </Button>
                         <Button
                           size="small"
@@ -457,7 +456,7 @@ pass = password`}
                             handleRemoveMirror(mirror.id)
                           }}
                         >
-                          Remove
+                          {t('remove')}
                         </Button>
                       </div>
                     </div>

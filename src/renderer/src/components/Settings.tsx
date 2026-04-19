@@ -270,36 +270,33 @@ const BlacklistSettings: React.FC = () => {
 
 const MirrorManagementLink: React.FC = () => {
   const styles = useStyles()
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
 
   return (
     <Card className={styles.card}>
       <CardHeader
-        description={<Subtitle1 weight="semibold">Mirrors & Server Configuration</Subtitle1>}
+        description={<Subtitle1 weight="semibold">{t('mirrorsAndServer')}</Subtitle1>}
       />
       <div className={styles.cardContent}>
-        <Text>
-          Server credentials (the <code>ServerInfo.json</code> values) and download mirrors are
-          managed together in Mirror Management. Open it from here or from the Manage button next to
-          the mirror selector at the top of the app.
-        </Text>
+        <Text>{t('mirrorsAndServerDesc')}</Text>
 
         <div className={styles.formRow}>
           <Dialog open={open} onOpenChange={(_, data) => setOpen(data.open)}>
             <DialogTrigger disableButtonEnhancement>
               <Button appearance="primary" size="large" icon={<ServerRegular />}>
-                Open Mirror Management
+                {t('openMirrorManagement')}
               </Button>
             </DialogTrigger>
             <DialogSurface style={{ width: '80vw', maxWidth: '1200px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
-              <DialogTitle>Mirror Management</DialogTitle>
+              <DialogTitle>{t('mirrorManagement')}</DialogTitle>
               <DialogContent style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <DialogBody style={{ flex: 1, overflow: 'hidden' }}>
                   <MirrorManagement />
                 </DialogBody>
                 <DialogActions>
                   <Button appearance="secondary" onClick={() => setOpen(false)}>
-                    Close
+                    {t('close')}
                   </Button>
                 </DialogActions>
               </DialogContent>
@@ -313,6 +310,7 @@ const MirrorManagementLink: React.FC = () => {
 
 const LogUploadSettings: React.FC = () => {
   const styles = useStyles()
+  const { t } = useLanguage()
   const {
     isUploading,
     uploadError,
@@ -342,9 +340,9 @@ const LogUploadSettings: React.FC = () => {
 
   return (
     <Card className={styles.card}>
-      <CardHeader description={<Subtitle1 weight="semibold">Log Upload</Subtitle1>} />
+      <CardHeader description={<Subtitle1 weight="semibold">{t('logUpload')}</Subtitle1>} />
       <div className={styles.cardContent}>
-        <Text>Upload the current log file to https://catbox.moe for sharing with support</Text>
+        <Text>{t('logUploadDesc')}</Text>
 
         <div className={styles.formRow}>
           <Button
@@ -354,7 +352,7 @@ const LogUploadSettings: React.FC = () => {
             disabled={isUploading}
             icon={<ShareRegular />}
           >
-            {isUploading ? 'Uploading...' : 'Upload Current Log'}
+            {isUploading ? t('uploading_log') : t('uploadCurrentLog')}
           </Button>
         </div>
 
@@ -364,12 +362,12 @@ const LogUploadSettings: React.FC = () => {
           <div className={styles.success}>
             <CheckmarkCircleRegular />
             <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS }}>
-              <Text>Log uploaded successfully!</Text>
+              <Text>{t('logUploadSuccess')}</Text>
 
               <div
                 style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}
               >
-                <Text weight="semibold">URL:</Text>
+                <Text weight="semibold">{t('url')}</Text>
                 <div
                   style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
                 >
@@ -379,7 +377,7 @@ const LogUploadSettings: React.FC = () => {
                     style={{ flexGrow: 1, fontFamily: 'monospace', fontSize: '12px' }}
                   />
                   <Button onClick={handleCopyUrl} size="small" appearance="secondary">
-                    Copy URL
+                    {t('copyUrl')}
                   </Button>
                 </div>
               </div>
@@ -392,7 +390,7 @@ const LogUploadSettings: React.FC = () => {
                     gap: tokens.spacingVerticalXS
                   }}
                 >
-                  <Text weight="semibold">Password:</Text>
+                  <Text weight="semibold">{t('password')}</Text>
                   <div
                     style={{
                       display: 'flex',
@@ -411,7 +409,7 @@ const LogUploadSettings: React.FC = () => {
                       }}
                     />
                     <Button onClick={handleCopyPassword} size="small" appearance="secondary">
-                      Copy Password
+                      {t('copyPassword')}
                     </Button>
                   </div>
                 </div>
@@ -422,8 +420,7 @@ const LogUploadSettings: React.FC = () => {
 
         <Text className={styles.hint}>
           <InfoRegular />
-          The uploaded log file will be available on catbox.moe. Share only the URL with support for
-          troubleshooting.
+          {t('logUploadHint')}
         </Text>
       </div>
     </Card>
@@ -534,7 +531,7 @@ const Settings: React.FC = () => {
 
   const handleSaveDownloadPath = async (): Promise<void> => {
     if (!editedDownloadPath) {
-      setLocalError('Download path cannot be empty')
+      setLocalError(t('downloadPathEmpty'))
       return
     }
 
@@ -552,7 +549,7 @@ const Settings: React.FC = () => {
       }, 3000)
     } catch (err) {
       console.error('Error saving download path:', err)
-      setLocalError('Failed to save download path')
+      setLocalError(t('failedToSavePath'))
     }
   }
 
@@ -572,7 +569,7 @@ const Settings: React.FC = () => {
       } else {
         const inputValue = parseFloat(downloadSpeedInput)
         if (isNaN(inputValue)) {
-          setLocalError('Please enter valid numbers for speed limits')
+          setLocalError(t('invalidNumbers'))
           return
         }
         const factor = SPEED_UNITS.find((u) => u.value === downloadSpeedUnit)?.factor || 1
@@ -586,7 +583,7 @@ const Settings: React.FC = () => {
       } else {
         const inputValue = parseFloat(uploadSpeedInput)
         if (isNaN(inputValue)) {
-          setLocalError('Please enter valid numbers for speed limits')
+          setLocalError(t('invalidNumbers'))
           return
         }
         const factor = SPEED_UNITS.find((u) => u.value === uploadSpeedUnit)?.factor || 1
@@ -613,7 +610,7 @@ const Settings: React.FC = () => {
       }, 3000)
     } catch (err) {
       console.error('Error saving speed limits:', err)
-      setLocalError('Failed to save speed limits')
+      setLocalError(t('failedToSaveSpeed'))
     }
   }
 
@@ -778,7 +775,7 @@ const Settings: React.FC = () => {
       <div className={styles.contentContainer}>
         <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
           <Title2 className={styles.headerTitle}>{t('applicationSettings')}</Title2>
-          {isLoading && <Spinner size="large" label="Loading settings..." />}
+          {isLoading && <Spinner size="large" label={t('loadingSettings')} />}
         </div>
         <Text as="p" className={styles.headerSubtitle}>
           {t('configurePreferences')}

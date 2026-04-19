@@ -77,5 +77,4 @@ publish:
   provider: github
   owner: jimzrt
   repo: apprenticevr
-electronDownload:
-  mirror: https://npmmirror.com/mirrors/electron/
+electronDownload: {}

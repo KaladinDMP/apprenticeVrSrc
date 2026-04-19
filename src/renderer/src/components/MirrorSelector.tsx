@@ -24,6 +24,7 @@ import {
   PlayRegular
 } from '@fluentui/react-icons'
 import { useMirrors } from '../hooks/useMirrors'
+import { useLanguage } from '../hooks/useLanguage'
 import MirrorManagement from './MirrorManagement'
 
 const useStyles = makeStyles({
@@ -51,6 +52,7 @@ const useStyles = makeStyles({
 
 const MirrorSelector: React.FC = () => {
   const styles = useStyles()
+  const { t } = useLanguage()
   const {
     mirrors,
     activeMirror,
@@ -101,7 +103,7 @@ const MirrorSelector: React.FC = () => {
     return (
       <div className={styles.container}>
         <Spinner size="tiny" />
-        <Text>Loading mirrors...</Text>
+        <Text>{t('loadingMirrors')}</Text>
       </div>
     )
   }
@@ -111,18 +113,18 @@ const MirrorSelector: React.FC = () => {
       {getStatusIcon()}
       <Dropdown
         className={styles.mirrorSelector}
-        value={activeMirror?.name || 'Public Mirror'}
+        value={activeMirror?.name || t('publicMirror')}
         selectedOptions={[activeMirror?.id || 'public']}
-        button={{ children: activeMirror?.name || 'Public Mirror' }}
+        button={{ children: activeMirror?.name || t('publicMirror') }}
         onOptionSelect={(_, data) => {
           if (data.optionValue) {
             handleMirrorChange(data.optionValue)
           }
         }}
-        placeholder="Select mirror..."
+        placeholder={t('selectMirror')}
       >
-        <Option value="public" text="Public Mirror">
-          Public Mirror
+        <Option value="public" text={t('publicMirror')}>
+          {t('publicMirror')}
         </Option>
         {mirrors.map((mirror) => (
           <Option key={mirror.id} value={mirror.id} text={mirror.name}>
@@ -138,9 +140,9 @@ const MirrorSelector: React.FC = () => {
           icon={<PlayRegular />}
           onClick={handleTestMirror}
           disabled={testingMirrors.has(activeMirror.id)}
-          title="Test mirror connectivity"
+          title={t('testMirrorConnectivity')}
         >
-          Test
+          {t('test')}
         </Button>
       )}
 
@@ -150,20 +152,20 @@ const MirrorSelector: React.FC = () => {
             appearance="subtle"
             size="small"
             icon={<SettingsRegular />}
-            title="Manage mirrors"
+            title={t('manageMirrors')}
           >
-            Manage
+            {t('manage')}
           </Button>
         </DialogTrigger>
         <DialogSurface className={styles.managementDialog}>
-          <DialogTitle>Mirror Management</DialogTitle>
+          <DialogTitle>{t('mirrorManagement')}</DialogTitle>
           <DialogContent style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <DialogBody style={{ flex: 1, overflow: 'hidden' }}>
               <MirrorManagement />
             </DialogBody>
             <DialogActions>
               <Button appearance="secondary" onClick={() => setShowManagement(false)}>
-                Close
+                {t('close')}
               </Button>
             </DialogActions>
           </DialogContent>

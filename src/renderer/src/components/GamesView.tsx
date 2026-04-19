@@ -16,6 +16,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { useAdb } from '../hooks/useAdb'
 import { useGames } from '../hooks/useGames'
 import { useDownload } from '../hooks/useDownload'
+import { useLanguage } from '../hooks/useLanguage'
 import { GameInfo } from '@shared/types'
 import placeholderImage from '../assets/images/game-placeholder.png'
 import {
@@ -262,6 +263,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
   } = useDownload()
 
   const styles = useStyles()
+  const { t } = useLanguage()
 
   const [globalFilter, setGlobalFilter] = useState('')
   const [searchInput, setSearchInput] = useState('')
@@ -466,7 +468,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
       },
       {
         accessorKey: 'name',
-        header: 'Name / Package',
+        header: () => t('namePackage'),
         size: nameColumnWidth > 0 ? nameColumnWidth : COLUMN_WIDTHS.MIN_NAME_PACKAGE,
         cell: ({ row }) => {
           const game = row.original
@@ -501,7 +503,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
               >
                 {isQueued && (
                   <Badge shape="rounded" color="informative" appearance="outline">
-                    Queued
+                    {t('queued')}
                   </Badge>
                 )}
                 {(isDownloading || isExtracting || isInstalling) && (
@@ -525,7 +527,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                 )}
                 {isInstallError && (
                   <Badge shape="rounded" color="danger" appearance="outline">
-                    Install Error
+                    {t('installError')}
                   </Badge>
                 )}
               </div>
@@ -546,7 +548,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
       },
       {
         accessorKey: 'version',
-        header: 'Version',
+        header: () => t('version'),
         size: COLUMN_WIDTHS.VERSION,
         cell: ({ row }) => {
           const listVersion = row.original.version
@@ -568,7 +570,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
       },
       {
         accessorKey: 'downloads',
-        header: 'Popularity',
+        header: () => t('popularity'),
         size: COLUMN_WIDTHS.POPULARITY,
         cell: (info) => {
           const count = info.getValue()
@@ -578,7 +580,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
       },
       {
         accessorKey: 'size',
-        header: 'Size',
+        header: () => t('size'),
         size: COLUMN_WIDTHS.SIZE,
         cell: (info) => {
           const sizeValue = info.getValue()
@@ -592,7 +594,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
       },
       {
         accessorKey: 'lastUpdated',
-        header: 'Last Updated',
+        header: () => t('lastUpdated'),
         size: COLUMN_WIDTHS.LAST_UPDATED,
         cell: (info) => info.getValue() || '-',
         enableResizing: true
@@ -609,7 +611,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
       }
     ]
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [styles, tableWidth])
+  }, [styles, tableWidth, t])
 
   const filteredGames = useMemo(() => {
     return games.filter((game) => {
@@ -651,7 +653,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
   })
 
   const formatDate = (date: Date | null): string => {
-    if (!date) return 'Never'
+    if (!date) return t('never')
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
@@ -663,11 +665,11 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
 
   const getProcessMessage = (): string => {
     if (downloadProgress > 0 && downloadProgress < 100) {
-      return `Downloading game data... ${downloadProgress}%`
+      return `${t('downloadingGameData')} ${downloadProgress}%`
     } else if (extractProgress > 0 && extractProgress < 100) {
-      return `Extracting game data... ${extractProgress}%`
+      return `${t('extractingGameData')} ${extractProgress}%`
     } else if (loadingGames) {
-      return 'Preparing game library...'
+      return t('preparingLibrary')
     }
     return ''
   }
@@ -1117,11 +1119,11 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <Button appearance="subtle" icon={<ArrowLeftRegular />} onClick={onBackToDevices}>
-            Devices selection
+            {t('devicesSelection')}
           </Button>
           <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
-              <Title3>{selectedDeviceDetails?.friendlyModelName || 'Games'}</Title3>
+              <Title3>{selectedDeviceDetails?.friendlyModelName || t('games')}</Title3>
               {selectedDeviceDetails && (
                 <>
                   {selectedDeviceDetails?.batteryLevel !== null && (
@@ -1156,7 +1158,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                     <Input
                       value={editUserNameValue}
                       onChange={(e) => setEditUserNameValue(e.target.value)}
-                      placeholder="Enter your VR gaming name"
+                      placeholder={t('enterVrName')}
                       size="small"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
@@ -1173,7 +1175,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                       onClick={handleSaveUserName}
                       disabled={loadingUserName || !editUserNameValue.trim()}
                     >
-                      {loadingUserName ? <Spinner size="tiny" /> : 'Save'}
+                      {loadingUserName ? <Spinner size="tiny" /> : t('save')}
                     </Button>
                     <Button
                       appearance="subtle"
@@ -1181,7 +1183,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                       onClick={handleCancelEditUserName}
                       disabled={loadingUserName}
                     >
-                      Cancel
+                      {t('cancel')}
                     </Button>
                   </div>
                 ) : (
@@ -1193,7 +1195,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                     }}
                   >
                     <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                      Username in Multiplayer Games:
+                      {t('usernameInGames')}
                     </Text>
                     <Button
                       appearance="subtle"
@@ -1208,9 +1210,9 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                         border: `1px solid ${tokens.colorNeutralStroke2}`,
                         backgroundColor: tokens.colorNeutralBackground1
                       }}
-                      title="Click to change your VR gaming name (appears in games and apps)"
+                      title={t('enterVrName')}
                     >
-                      {userName || 'Click to set'}
+                      {userName || t('clickToSet')}
                       <EditRegular
                         style={{ marginLeft: tokens.spacingHorizontalXS, fontSize: '12px' }}
                       />
@@ -1234,20 +1236,20 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
             <div className={styles.toolbarRight}>
               <Text className={styles.connectedDeviceText}>
                 <CheckmarkCircleRegular />
-                Connected to: {selectedDevice}
+                {t('connectedTo')} {selectedDevice}
               </Text>
               <Button
                 appearance="subtle"
                 icon={<PlugDisconnectedRegular />}
                 onClick={disconnectDevice}
-                title="Disconnect from device"
+                title={t('disconnectFromDevice')}
               />
             </div>
           ) : (
             <div className={styles.toolbarRight}>
               <Text className={styles.deviceWarningText}>
                 <DismissRegular />
-                Not connected to a device
+                {t('notConnectedToDevice')}
               </Text>
             </div>
           )}
@@ -1258,7 +1260,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
         <div className="games-toolbar">
           <div className="games-toolbar-left">
             <Button icon={<ArrowClockwiseRegular />} onClick={refreshGames} disabled={isBusy}>
-              {isBusy ? 'Working...' : 'Refresh Games'}
+              {isBusy ? t('working') : t('refreshGames')}
             </Button>
             <Button
               icon={<ArrowClockwiseRegular />}
@@ -1266,11 +1268,11 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
               disabled={isBusy || !isConnected}
               title={
                 !isConnected
-                  ? 'Connect a device to refresh its packages'
-                  : 'Refresh installed packages on the device'
+                  ? t('connectDeviceToRefresh')
+                  : t('refreshInstalledPackages')
               }
             >
-              {isBusy ? 'Working...' : 'Refresh Quest'}
+              {isBusy ? t('working') : t('refreshQuest')}
             </Button>
             <Menu>
               <MenuTrigger disableButtonEnhancement>
@@ -1280,11 +1282,11 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                   disabled={isBusy || !isConnected}
                   title={
                     !isConnected
-                      ? 'Connect a device to manually install files'
-                      : 'Install APK file or folder manually'
+                      ? t('connectDeviceInstall')
+                      : t('installApkOrFolder')
                   }
                 >
-                  {isManualInstalling ? 'Installing...' : 'Manual Install'}
+                  {isManualInstalling ? t('manualInstalling') : t('manualInstall')}
                   <ChevronDownRegular />
                 </Button>
               </MenuTrigger>
@@ -1295,62 +1297,62 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                     onClick={() => handleManualInstall('apk')}
                     disabled={isManualInstalling}
                   >
-                    Install APK File
+                    {t('installApkFile')}
                   </MenuItem>
                   <MenuItem
                     icon={<FolderAddRegular />}
                     onClick={() => handleManualInstall('folder')}
                     disabled={isManualInstalling}
                   >
-                    Install Folder
+                    {t('installFolder')}
                   </MenuItem>
                   <MenuItem
                     icon={<CopyRegular />}
                     onClick={handleCopyObbFolder}
                     disabled={isManualInstalling}
                   >
-                    Copy OBB Folder
+                    {t('copyObbFolder')}
                   </MenuItem>
                 </MenuList>
               </MenuPopover>
             </Menu>
-            <span className="last-synced">Last synced: {formatDate(lastSyncTime)}</span>
+            <span className="last-synced">{t('lastSynced')} {formatDate(lastSyncTime)}</span>
             {isConnected && (
               <div className="filter-buttons">
                 <button
                   onClick={() => setActiveFilter('all')}
                   className={activeFilter === 'all' ? 'active' : ''}
                 >
-                  All ({counts.total})
+                  {t('filterAll')} ({counts.total})
                 </button>
                 <button
                   onClick={() => setActiveFilter('installed')}
                   className={activeFilter === 'installed' ? 'active' : ''}
                 >
-                  Installed ({counts.installed})
+                  {t('filterInstalled')} ({counts.installed})
                 </button>
                 <button
                   onClick={() => setActiveFilter('update')}
                   className={activeFilter === 'update' ? 'active' : ''}
                   disabled={counts.updates === 0}
                 >
-                  Updates ({counts.updates})
+                  {t('filterUpdates')} ({counts.updates})
                 </button>
               </div>
             )}
           </div>
         </div>
         <div className="games-toolbar-right">
-          <span className="game-count">{table.getFilteredRowModel().rows.length} displayed</span>
+          <span className="game-count">{table.getFilteredRowModel().rows.length} {t('displayed')}</span>
           <Input
             value={searchInput}
             onChange={handleSearchChange}
-            placeholder="Search name/package..."
+            placeholder={t('searchPlaceholder')}
             type="search"
           />
         </div>
         {isBusy && !loadingGames && !downloadProgress && !extractProgress && (
-          <div className="loading-indicator">Processing...</div>
+          <div className="loading-indicator">{t('processing')}</div>
         )}
 
         {installStatusMessage && <div className="loading-indicator">{installStatusMessage}</div>}
@@ -1365,13 +1367,11 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
         )}
 
         {loadingGames ? (
-          <div className="loading-indicator">Loading games library...</div>
+          <div className="loading-indicator">{t('loadingGamesLibrary')}</div>
         ) : gamesError ? (
           <div className="error-message">{gamesError}</div>
         ) : games.length === 0 && !loadingGames ? (
-          <div className="no-games-message">
-            No games found. Click &quot;Refresh Games&quot; to sync the game library.
-          </div>
+          <div className="no-games-message">{t('noGamesFound')}</div>
         ) : (
           <>
             <div className="table-wrapper" ref={tableContainerRef}>
@@ -1491,7 +1491,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
             >
               <DialogSurface>
                 <DialogBody>
-                  <DialogTitle>Manual Operation</DialogTitle>
+                  <DialogTitle>{t('manualOperation')}</DialogTitle>
                   <DialogContent>
                     <div style={{ marginBottom: tokens.spacingVerticalM }}>
                       <Text>{installStatusMessage}</Text>
@@ -1506,7 +1506,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                         }}
                       >
                         <Spinner size="small" />
-                        <Text>Processing...</Text>
+                        <Text>{t('processing')}</Text>
                       </div>
                     )}
                     {installSuccess !== null && (
@@ -1524,11 +1524,11 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                         }}
                       >
                         <Text weight="semibold">
-                          {installSuccess ? '✅ Operation Successful!' : '❌ Operation Failed'}
+                          {installSuccess ? t('operationSuccess') : t('operationFailed')}
                         </Text>
                         {!installSuccess && (
                           <div style={{ marginTop: tokens.spacingVerticalXS }}>
-                            <Text size={200}>Please check the logs for more details.</Text>
+                            <Text size={200}>{t('checkLogs')}</Text>
                           </div>
                         )}
                       </div>
@@ -1540,7 +1540,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                       onClick={closeInstallDialog}
                       disabled={isManualInstalling}
                     >
-                      {isManualInstalling ? 'Processing...' : 'Close'}
+                      {isManualInstalling ? t('processing') : t('close')}
                     </Button>
                   </DialogActions>
                 </DialogBody>
@@ -1554,18 +1554,14 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
             >
               <DialogSurface>
                 <DialogBody>
-                  <DialogTitle>Confirm OBB Folder Copy</DialogTitle>
+                  <DialogTitle>{t('confirmObbCopy')}</DialogTitle>
                   <DialogContent>
                     <div style={{ marginBottom: tokens.spacingVerticalM }}>
                       <Text>
-                        No corresponding package was found for folder &quot;
-                        {obbFolderToConfirm?.split(/[/\\]/).pop()}&quot;.
+                        {t('obbNoPackageFound')} &quot;{obbFolderToConfirm?.split(/[/\\]/).pop()}&quot;.
                       </Text>
                       <div style={{ marginTop: tokens.spacingVerticalS }}>
-                        <Text>
-                          Do you still want to copy this folder to the OBB directory? This is
-                          usually only useful if the matching app is already installed.
-                        </Text>
+                        <Text>{t('obbCopyConfirm')}</Text>
                       </div>
                     </div>
                   </DialogContent>
@@ -1575,14 +1571,14 @@ const GamesView: React.FC<GamesViewProps> = ({ onBackToDevices }) => {
                       onClick={handleObbConfirmCopy}
                       disabled={isManualInstalling}
                     >
-                      Copy Anyway
+                      {t('copyAnyway')}
                     </Button>
                     <Button
                       appearance="secondary"
                       onClick={handleObbCancelCopy}
                       disabled={isManualInstalling}
                     >
-                      Cancel
+                      {t('cancel')}
                     </Button>
                   </DialogActions>
                 </DialogBody>
