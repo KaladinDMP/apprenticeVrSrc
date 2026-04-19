@@ -42,7 +42,8 @@ class UploadService extends EventEmitter {
   constructor() {
     super()
     this.uploadsBasePath = join(app.getPath('userData'), 'uploads')
-    this.configFilePath = join(app.getPath('userData'), 'rclone-upload.conf')
+    // upload.config is written by the VRP sync into vrp-data/.meta after first connect
+    this.configFilePath = join(app.getPath('userData'), 'vrp-data', '.meta', 'upload.config')
   }
 
   public async initialize(): Promise<ServiceStatus> {
@@ -52,10 +53,6 @@ class UploadService extends EventEmitter {
 
     try {
       await fs.mkdir(this.uploadsBasePath, { recursive: true })
-
-      // Fetch and save rclone config for uploads
-      await this.fetchRcloneConfig()
-
       this.status = 'INITIALIZED'
       console.log('UploadService initialized.')
       return 'INITIALIZED'
@@ -63,31 +60,6 @@ class UploadService extends EventEmitter {
       console.error('Failed to initialize UploadService:', error)
       this.status = 'ERROR'
       return 'ERROR'
-    }
-  }
-
-  private async fetchRcloneConfig(): Promise<void> {
-    const configUrl = 'https://vrpirates.wiki/downloads/vrp.upload.config' // TODO: Update URL when new upload endpoint is available
-
-    try {
-      console.log(`Fetching rclone upload config from: ${configUrl}`)
-      const response = await fetch(configUrl)
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch rclone config: ${response.status} ${response.statusText}`)
-      }
-
-      const configData = await response.text()
-
-      if (!configData.includes('[RSL-gameuploads]')) {
-        throw new Error('Invalid rclone config: missing RSL-gameuploads section')
-      }
-
-      await fs.writeFile(this.configFilePath, configData, 'utf-8')
-      console.log(`Rclone upload config saved to: ${this.configFilePath}`)
-    } catch (error) {
-      console.error('Error fetching rclone upload config:', error)
-      throw error
     }
   }
 
@@ -896,8 +868,10 @@ class UploadService extends EventEmitter {
     console.log(`[UploadService] Starting upload of ${zipFilePath} to server`)
 
     if (!existsSync(this.configFilePath)) {
-      console.error(`[UploadService] Rclone config file not found: ${this.configFilePath}`)
-      throw new Error('Rclone config file not found')
+      console.error(`[UploadService] upload.config not found at: ${this.configFilePath}`)
+      throw new Error(
+        'upload.config not found — connect to VRP at least once so the config is downloaded'
+      )
     }
 
     const rclonePath = dependencyService.getRclonePath()
