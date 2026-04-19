@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
 
     outputs:
       package_version: ${{ steps.build_details.outputs.package_version }}
@@ -88,7 +88,7 @@ jobs:
             echo "BUILD_COMMAND=npx electron-vite build && npx electron-builder --win --x64 --ia32 --publish never" >> $GITHUB_OUTPUT
             echo "ARTIFACT_PATH=${OUTPUT_DIR}/${PRODUCT_NAME}-${VERSION}-*.exe" >> $GITHUB_OUTPUT
           elif [ "$RUNNER_OS" == "macOS" ]; then
-            echo "BUILD_COMMAND=npx electron-vite build && npx electron-builder --mac --x64 --arm64 --publish never" >> $GITHUB_OUTPUT
+            echo "BUILD_COMMAND=npx electron-vite build && npx electron-builder --mac --x64 --publish never" >> $GITHUB_OUTPUT
             echo "ARTIFACT_PATH=${OUTPUT_DIR}/${PRODUCT_NAME}-${VERSION}-*.dmg" >> $GITHUB_OUTPUT
           elif [ "$RUNNER_OS" == "Linux" ]; then
             echo "BUILD_COMMAND=npx electron-vite build && npx electron-builder --linux --x64 --arm64 --publish never" >> $GITHUB_OUTPUT
@@ -196,6 +196,6 @@ jobs:
           fail_on_unmatched_files: false
           files: |
             artifacts/build-artifact-windows-latest/*
-            artifacts/build-artifact-macos-13/*
+            artifacts/build-artifact-macos-latest/*
             artifacts/build-artifact-ubuntu-latest/*
             update.txt
