@@ -20,6 +20,10 @@ extraResources:
     to: bin
     filter:
       - '**/*'
+  - from: resources/bin/${os}-${arch}
+    to: bin
+    filter:
+      - '**/*'
   - from: resources/bin
     to: bin
     filter:

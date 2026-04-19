@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { join } from 'path'
+import { execSync } from 'child_process'
 import { promises as fsPromises, existsSync, createWriteStream, chmodSync, copyFileSync } from 'fs'
 import axios, { AxiosProgressEvent } from 'axios'
 import SevenZip from 'node-7z'
@@ -170,7 +171,7 @@ class DependencyService {
         binaryName = '7za.exe'
         break
       case 'linux':
-        platformDir = 'linux'
+        platformDir = process.arch === 'arm64' ? 'linux-arm64' : 'linux'
         binaryName = '7zzs'
         break
       case 'darwin':
@@ -511,6 +512,34 @@ class DependencyService {
     this.status.adb.downloading = true
     this.status.adb.error = null
     progressCallback?.(this.status, { name: 'adb', percentage: 0 })
+
+    // ARM64 Linux: Google doesn't ship ARM64 platform-tools, use system adb
+    if (process.platform === 'linux' && process.arch === 'arm64') {
+      let systemAdb: string | null = null
+      try {
+        const result = execSync('which adb', { encoding: 'utf-8' }).trim()
+        if (result && existsSync(result)) systemAdb = result
+      } catch { /* not in PATH */ }
+      if (!systemAdb) {
+        for (const candidate of ['/usr/bin/adb', '/usr/local/bin/adb', '/bin/adb']) {
+          if (existsSync(candidate)) { systemAdb = candidate; break }
+        }
+      }
+      if (!systemAdb) {
+        this.status.adb.downloading = false
+        this.status.adb.error =
+          'ARM64 Linux: adb not found. Install it first: sudo apt install adb'
+        throw new Error(this.status.adb.error)
+      }
+      console.log(`[ARM64 Linux] Using system adb at ${systemAdb}`)
+      await fsPromises.copyFile(systemAdb, expectedPath)
+      await fsPromises.chmod(expectedPath, 0o755)
+      this.status.adb.ready = true
+      this.status.adb.error = null
+      this.status.adb.downloading = false
+      progressCallback?.(this.status, { name: 'adb', percentage: 100 })
+      return
+    }
 
     let tempArchivePath: string | null = null
     let tempExtractDir: string | null = null
