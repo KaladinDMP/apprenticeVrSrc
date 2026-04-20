@@ -133,25 +133,17 @@ jobs:
           path: ${{ steps.build_details.outputs.ARTIFACT_PATH }}
           if-no-files-found: warn
 
-  mac:
-    name: Build macOS DMG
-    needs: build
-    if: always()
-    uses: ./.github/workflows/mac-build.yml
-    with:
-      version: ${{ needs.build.outputs.package_version }}
-    permissions:
-      contents: write
-
   create_release:
     name: Create GitHub Release
-    needs: [build, mac]
+    needs: [build]
     # Run the release step even if one or more OS builds failed, so the successful
     # artifacts still get published.
     if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -202,3 +194,13 @@ jobs:
             artifacts/build-artifact-windows-latest/*
             artifacts/build-artifact-macos-latest/*
             artifacts/build-artifact-ubuntu-latest/*
+
+  mac:
+    name: Build macOS DMG
+    needs: create_release
+    if: always()
+    uses: ./.github/workflows/mac-build.yml
+    with:
+      version: ${{ needs.create_release.outputs.version }}
+    permissions:
+      contents: write
