@@ -38,36 +38,41 @@ jobs:
           echo "Building version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Build app directory (no dmg-builder required)
-        run: npx electron-vite build && npx electron-builder --mac --dir --x64 --publish never
+      - name: Build app directories (no dmg-builder required)
+        run: |
+          npx electron-vite build
+          npx electron-builder --mac --dir --x64 --publish never
+          npx electron-builder --mac --dir --arm64 --publish never
 
-      - name: Package DMG using hdiutil (built-in macOS tool)
+      - name: Package DMGs using hdiutil (built-in macOS tool)
         shell: bash
         run: |
-          APP_PATH=$(find dist/mac -maxdepth 1 -name "*.app" | head -1)
-          if [ -z "$APP_PATH" ]; then
-            echo "ERROR: No .app found in dist/mac after build"
-            ls -la dist/ || true
-            exit 1
-          fi
-          echo "Found app: $APP_PATH"
+          for ARCH in x64 arm64; do
+            APP_DIR="dist/mac"
+            [ "$ARCH" = "arm64" ] && APP_DIR="dist/mac-arm64"
 
-          STAGING=$(mktemp -d)
-          cp -r "$APP_PATH" "$STAGING/"
-          ln -s /Applications "$STAGING/Applications"
+            APP_PATH=$(find "$APP_DIR" -maxdepth 1 -name "*.app" | head -1)
+            if [ -z "$APP_PATH" ]; then
+              echo "ERROR: No .app found in $APP_DIR"
+              exit 1
+            fi
+            echo "Packaging $ARCH: $APP_PATH"
 
-          DMG_NAME="apprenticevr-${VERSION}-x64.dmg"
-          hdiutil create \
-            -volname "ApprenticeVR VRSrc Edition" \
-            -srcfolder "$STAGING" \
-            -ov -format UDZO \
-            "dist/$DMG_NAME"
+            STAGING=$(mktemp -d)
+            cp -r "$APP_PATH" "$STAGING/"
+            ln -s /Applications "$STAGING/Applications"
 
-          rm -rf "$STAGING"
-          echo "DMG_NAME=$DMG_NAME" >> $GITHUB_ENV
-          ls -lh "dist/$DMG_NAME"
+            DMG="dist/apprenticevr-${VERSION}-${ARCH}.dmg"
+            hdiutil create \
+              -volname "ApprenticeVR VRSrc Edition" \
+              -srcfolder "$STAGING" \
+              -ov -format UDZO \
+              "$DMG"
+            rm -rf "$STAGING"
+            ls -lh "$DMG"
+          done
 
-      - name: Upload DMG to existing release
+      - name: Upload DMGs to existing release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,8 +80,10 @@ jobs:
           TAG="v${VERSION}"
           echo "Verifying release $TAG exists..."
           gh release view "$TAG" --repo KaladinDMP/apprenticeVrSrc
-          echo "Uploading dist/$DMG_NAME..."
-          gh release upload "$TAG" "dist/$DMG_NAME" \
-            --repo KaladinDMP/apprenticeVrSrc \
-            --clobber
-          echo "Successfully uploaded dist/$DMG_NAME to $TAG"
+          for DMG in dist/apprenticevr-${VERSION}-x64.dmg dist/apprenticevr-${VERSION}-arm64.dmg; do
+            echo "Uploading $DMG..."
+            gh release upload "$TAG" "$DMG" \
+              --repo KaladinDMP/apprenticeVrSrc \
+              --clobber
+          done
+          echo "Done."
