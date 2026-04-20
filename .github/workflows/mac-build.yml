@@ -1,0 +1,86 @@
+name: Mac Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g. 2.2.8) — must match an existing release tag v{version}'
+        required: true
+        type: string
+
+jobs:
+  mac-build:
+    name: Build and upload macOS DMG
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Pin version in package.json
+        shell: bash
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          VERSION="${VERSION#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          node -e "
+            const fs = require('fs');
+            const p = require('./package.json');
+            p.version = process.env.VERSION;
+            fs.writeFileSync('./package.json', JSON.stringify(p, null, 2) + '\n');
+          "
+          echo "Building version: $VERSION"
+
+      - name: Build app directory (no dmg-builder required)
+        run: npx electron-vite build && npx electron-builder --mac --dir --x64
+
+      - name: Package DMG using hdiutil (built-in macOS tool)
+        shell: bash
+        run: |
+          APP_PATH=$(find dist/mac -maxdepth 1 -name "*.app" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: No .app found in dist/mac after build"
+            ls -la dist/ || true
+            exit 1
+          fi
+          echo "Found app: $APP_PATH"
+
+          STAGING=$(mktemp -d)
+          cp -r "$APP_PATH" "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+
+          DMG_NAME="apprenticevr-${VERSION}-x64.dmg"
+          hdiutil create \
+            -volname "ApprenticeVR VRSrc Edition" \
+            -srcfolder "$STAGING" \
+            -ov -format UDZO \
+            "dist/$DMG_NAME"
+
+          rm -rf "$STAGING"
+          echo "DMG_NAME=$DMG_NAME" >> $GITHUB_ENV
+          ls -lh "dist/$DMG_NAME"
+
+      - name: Upload DMG to existing release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${VERSION}"
+          echo "Verifying release $TAG exists..."
+          gh release view "$TAG" --repo KaladinDMP/apprenticeVrSrc
+          echo "Uploading dist/$DMG_NAME..."
+          gh release upload "$TAG" "dist/$DMG_NAME" \
+            --repo KaladinDMP/apprenticeVrSrc \
+            --clobber
+          echo "Successfully uploaded dist/$DMG_NAME to $TAG"
