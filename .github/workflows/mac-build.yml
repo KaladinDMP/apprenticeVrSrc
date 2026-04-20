@@ -59,7 +59,7 @@ jobs:
             echo "Packaging $ARCH: $APP_PATH"
 
             STAGING=$(mktemp -d)
-            cp -r "$APP_PATH" "$STAGING/"
+            ditto "$APP_PATH" "$STAGING/$(basename "$APP_PATH")"
             ln -s /Applications "$STAGING/Applications"
 
             DMG="dist/apprenticevr-${VERSION}-${ARCH}.dmg"
