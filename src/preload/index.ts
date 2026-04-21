@@ -84,7 +84,9 @@ const api = {
     setUserName: (serial: string, name: string): Promise<void> =>
       typedIpcRenderer.invoke('adb:set-user-name', serial, name),
     getDeviceIp: (serial: string): Promise<string | null> =>
-      typedIpcRenderer.invoke('adb:get-device-ip', serial)
+      typedIpcRenderer.invoke('adb:get-device-ip', serial),
+    runShellCommand: (serial: string, command: string): Promise<string | null> =>
+      typedIpcRenderer.invoke('adb:run-shell-command', serial, command)
   } satisfies AdbAPIRenderer,
   games: {
     getGames: (): Promise<GameInfo[]> => typedIpcRenderer.invoke('games:get-games'),

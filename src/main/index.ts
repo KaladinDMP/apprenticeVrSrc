@@ -279,6 +279,9 @@ app.whenReady().then(async () => {
   typedIpcMain.handle('adb:ping-device', async (_event, ipAddress) => {
     return adbService.pingDevice(ipAddress)
   })
+  typedIpcMain.handle('adb:run-shell-command', async (_event, serial, command) => {
+    return adbService.runShellCommand(serial, command)
+  })
 
   // --- Game Handlers ---
   typedIpcMain.handle('games:get-games', async () => gameService.getGames())
