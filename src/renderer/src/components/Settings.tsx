@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
+import CreditsDialog from './CreditsDialog'
+import '../assets/credits-dialog.css'
 import {
   Card,
   CardHeader,
@@ -485,6 +487,7 @@ const Settings: React.FC = () => {
     setUploadSpeedLimit
   } = useSettings()
   const [editedDownloadPath, setEditedDownloadPath] = useState(downloadPath)
+  const [isCreditsOpen, setIsCreditsOpen] = useState(false)
 
   // New state for speed input values
   const [downloadSpeedInput, setDownloadSpeedInput] = useState(
@@ -919,7 +922,28 @@ const Settings: React.FC = () => {
         </Card>
 
         <BlacklistSettings />
+
+        {/* Credits footer */}
+        <div className="credits-settings-footer">
+          <div className="credits-settings-label">crafted with passion for the VR community</div>
+          <div>
+            <span className="credits-settings-main">MADE WITH ♥ BY DMP OF ARMGDDN GAMES</span>
+            <button
+              className="credits-settings-question-btn"
+              onClick={() => setIsCreditsOpen(true)}
+              title="Credits & Special Thanks"
+            >
+              ?
+            </button>
+          </div>
+        </div>
       </div>
+
+      <CreditsDialog
+        open={isCreditsOpen}
+        onClose={() => setIsCreditsOpen(false)}
+        variant="settings"
+      />
     </div>
   )
 }
