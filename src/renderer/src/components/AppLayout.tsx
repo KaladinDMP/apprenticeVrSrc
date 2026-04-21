@@ -10,7 +10,6 @@ import { UpdateNotification } from './UpdateNotification'
 import UploadGamesDialog from './UploadGamesDialog'
 import {
   FluentProvider,
-  Title1,
   makeStyles,
   tokens,
   Spinner,
@@ -66,20 +65,50 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     padding: `${tokens.spacingVerticalNone} ${tokens.spacingHorizontalL}`,
-    borderBottom: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground3,
+    borderBottom: '1px solid rgba(0, 212, 255, 0.35)',
+    backgroundColor: '#050514',
+    backgroundImage:
+      'linear-gradient(rgba(0, 212, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 212, 255, 0.04) 1px, transparent 1px)',
+    backgroundSize: '40px 40px',
+    boxShadow: '0 1px 24px 0 rgba(0, 212, 255, 0.08), inset 0 -1px 0 rgba(176, 64, 255, 0.15)',
     gap: tokens.spacingHorizontalM,
     justifyContent: 'space-between',
-    height: '90px', // Fixed header height
+    height: '90px',
     flexShrink: 0
   },
   logo: {
-    height: '48px'
+    height: '52px',
+    filter:
+      'drop-shadow(0 0 6px #00d4ff) drop-shadow(0 0 14px rgba(176, 64, 255, 0.7))'
   },
   headerContent: {
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalM
+  },
+  titleSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1px'
+  },
+  titleMain: {
+    fontSize: '22px',
+    fontWeight: '700',
+    letterSpacing: '0.04em',
+    background: 'linear-gradient(100deg, #00d4ff 0%, #c060ff 100%)',
+    backgroundClip: 'text',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    color: 'transparent',
+    lineHeight: '1.2',
+    textShadow: 'none'
+  },
+  titleSub: {
+    fontSize: '10px',
+    letterSpacing: '0.18em',
+    fontFamily: 'monospace',
+    color: 'rgba(0, 212, 255, 0.55)',
+    lineHeight: '1.2'
   },
   mainContent: {
     flexGrow: 1,
@@ -376,7 +405,10 @@ const AppLayout: React.FC = () => {
               <div className={styles.header}>
                 <div className={styles.headerContent}>
                   <img alt="logo" className={styles.logo} src={electronLogo} />
-                  <Title1>Apprentice VR</Title1>
+                  <div className={styles.titleSection}>
+                    <span className={styles.titleMain}>Apprentice VR</span>
+                    <span className={styles.titleSub}>アプレンティスVR · VR SRC EDITION</span>
+                  </div>
                 </div>
                 <div className={styles.headerActions}>
                   {currentView !== AppView.DEVICE_LIST && (
