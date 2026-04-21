@@ -46,7 +46,7 @@ const CreditsDialog: React.FC<CreditsDialogProps> = ({ open, onClose, variant = 
           </button>
         </div>
         <div className="credits-body">
-          <div className="credits-title-line">$P3C|$/_ TH4N|&lt;$</div>
+          <div className="credits-title-line">$P3C|4/_ TH4N|&lt;$</div>
           <div className="credits-subtitle">to my 1337 CREW</div>
           <div className="credits-oder">(in no particular oder)</div>
           <div className="credits-sep">{SEP_FWD}</div>

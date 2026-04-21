@@ -410,8 +410,7 @@
   background-color: var(--colorNeutralBackground2);
   border: 1px solid var(--colorNeutralStroke2);
   transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-  content-visibility: auto;
-  contain-intrinsic-size: 200px 310px;
+  min-height: 220px;
 }
 
 .game-card:hover {
