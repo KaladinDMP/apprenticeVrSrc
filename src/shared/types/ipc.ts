@@ -104,7 +104,9 @@ export interface IPCChannels {
   'settings:set-language': DefineChannel<[lang: AppLanguage], void>
 
   // Log upload related channels
-  'logs:upload-current': DefineChannel<[], { url: string; password: string } | null>
+  'logs:upload-current': DefineChannel<[], { url: string; password: string; slug: string } | null>
+  'logs:open-log-folder': DefineChannel<[], void>
+  'logs:open-log-file': DefineChannel<[], void>
 
   // Mirror related channels
   'mirrors:get-mirrors': DefineChannel<[], Mirror[]>

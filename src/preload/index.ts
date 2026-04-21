@@ -222,8 +222,10 @@ const api = {
   } satisfies SettingsAPIRenderer,
   // Logs APIs
   logs: {
-    uploadCurrentLog: (): Promise<{ url: string; password: string } | null> =>
-      typedIpcRenderer.invoke('logs:upload-current')
+    uploadCurrentLog: (): Promise<{ url: string; password: string; slug: string } | null> =>
+      typedIpcRenderer.invoke('logs:upload-current'),
+    openLogFolder: (): Promise<void> => typedIpcRenderer.invoke('logs:open-log-folder'),
+    openLogFile: (): Promise<void> => typedIpcRenderer.invoke('logs:open-log-file')
   } satisfies LogsAPIRenderer,
   // Mirror APIs
   mirrors: {

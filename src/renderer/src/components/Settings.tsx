@@ -33,7 +33,9 @@ import {
   InfoRegular,
   DeleteRegular,
   ShareRegular,
-  ServerRegular
+  ServerRegular,
+  DocumentTextRegular,
+  CopyRegular
 } from '@fluentui/react-icons'
 import { useSettings } from '../hooks/useSettings'
 import { useGames } from '../hooks/useGames'
@@ -316,9 +318,11 @@ const LogUploadSettings: React.FC = () => {
     uploadError,
     uploadSuccess,
     shareableUrl,
-    password,
+    slug,
     uploadCurrentLog,
-    clearUploadState
+    clearUploadState,
+    openLogFolder,
+    openLogFile
   } = useLogs()
 
   const handleUploadLog = async (): Promise<void> => {
@@ -326,16 +330,12 @@ const LogUploadSettings: React.FC = () => {
     await uploadCurrentLog()
   }
 
-  const handleCopyUrl = (): void => {
-    if (shareableUrl) {
-      navigator.clipboard.writeText(shareableUrl)
-    }
+  const handleCopySlug = (): void => {
+    if (slug) navigator.clipboard.writeText(slug)
   }
 
-  const handleCopyPassword = (): void => {
-    if (password) {
-      navigator.clipboard.writeText(password)
-    }
+  const handleCopyUrl = (): void => {
+    if (shareableUrl) navigator.clipboard.writeText(shareableUrl)
   }
 
   return (
@@ -344,11 +344,27 @@ const LogUploadSettings: React.FC = () => {
       <div className={styles.cardContent}>
         <Text>{t('logUploadDesc')}</Text>
 
-        <div className={styles.formRow}>
+        <div className={styles.formRow} style={{ gap: tokens.spacingHorizontalS, flexWrap: 'wrap' }}>
+          <Button
+            onClick={() => openLogFolder()}
+            appearance="secondary"
+            size="medium"
+            icon={<FolderOpenRegular />}
+          >
+            {t('openLogFolder')}
+          </Button>
+          <Button
+            onClick={() => openLogFile()}
+            appearance="secondary"
+            size="medium"
+            icon={<DocumentTextRegular />}
+          >
+            {t('openLogFile')}
+          </Button>
           <Button
             onClick={handleUploadLog}
             appearance="primary"
-            size="large"
+            size="medium"
             disabled={isUploading}
             icon={<ShareRegular />}
           >
@@ -364,6 +380,35 @@ const LogUploadSettings: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS }}>
               <Text>{t('logUploadSuccess')}</Text>
 
+              {/* Rentry share code — prominently displayed, auto-copied on upload */}
+              {slug && (
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}
+                >
+                  <Text weight="semibold">{t('rentryCode')}</Text>
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                  >
+                    <Input
+                      value={slug}
+                      readOnly
+                      style={{
+                        width: '220px',
+                        fontFamily: 'monospace',
+                        fontSize: '16px',
+                        fontWeight: 'bold'
+                      }}
+                    />
+                    <Button onClick={handleCopySlug} size="small" appearance="primary" icon={<CopyRegular />}>
+                      {t('copyCode')}
+                    </Button>
+                  </div>
+                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                    {t('rentryCodeHint')}
+                  </Text>
+                </div>
+              )}
+
               <div
                 style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}
               >
@@ -376,44 +421,11 @@ const LogUploadSettings: React.FC = () => {
                     readOnly
                     style={{ flexGrow: 1, fontFamily: 'monospace', fontSize: '12px' }}
                   />
-                  <Button onClick={handleCopyUrl} size="small" appearance="secondary">
+                  <Button onClick={handleCopyUrl} size="small" appearance="secondary" icon={<CopyRegular />}>
                     {t('copyUrl')}
                   </Button>
                 </div>
               </div>
-
-              {password && (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: tokens.spacingVerticalXS
-                  }}
-                >
-                  <Text weight="semibold">{t('password')}</Text>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: tokens.spacingHorizontalS
-                    }}
-                  >
-                    <Input
-                      value={password}
-                      readOnly
-                      style={{
-                        width: '200px',
-                        fontFamily: 'monospace',
-                        fontSize: '14px',
-                        fontWeight: 'bold'
-                      }}
-                    />
-                    <Button onClick={handleCopyPassword} size="small" appearance="secondary">
-                      {t('copyPassword')}
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}

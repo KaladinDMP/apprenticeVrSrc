@@ -479,6 +479,16 @@ app.whenReady().then(async () => {
     }
   })
 
+  typedIpcMain.handle('logs:open-log-folder', async () => {
+    console.log('[IPC] Open log folder requested')
+    await logsService.openLogFolder()
+  })
+
+  typedIpcMain.handle('logs:open-log-file', async () => {
+    console.log('[IPC] Open log file requested')
+    await logsService.openLogFile()
+  })
+
   // --- WiFi Bookmark Handlers ---
   typedIpcMain.handle('wifi-bookmarks:get-all', async () => {
     return await wifiBookmarksService.getAllBookmarks()

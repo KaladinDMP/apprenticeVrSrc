@@ -1,16 +1,36 @@
-import { app } from 'electron'
+import { app, shell } from 'electron'
 import { join } from 'path'
-import { existsSync, readFileSync, unlinkSync } from 'fs'
-import SevenZip from 'node-7z'
-import dependencyService from './dependencyService'
+import { existsSync, readFileSync } from 'fs'
 import { LogsAPI } from '@shared/types'
+
+const MAX_LOG_BYTES = 150 * 1024 // 150 KB cap for rentry.co
 
 class LogsService implements LogsAPI {
   public getLogFilePath(): string {
-    return join(join(app.getPath('userData'), 'logs'), 'main.log')
+    return join(app.getPath('userData'), 'logs', 'main.log')
   }
 
-  async uploadCurrentLog(): Promise<{ url: string; password: string } | null> {
+  public getLogFolderPath(): string {
+    return join(app.getPath('userData'), 'logs')
+  }
+
+  public async openLogFolder(): Promise<void> {
+    const folderPath = this.getLogFolderPath()
+    console.log('[LogsService] Opening log folder:', folderPath)
+    await shell.openPath(folderPath)
+  }
+
+  public async openLogFile(): Promise<void> {
+    const filePath = this.getLogFilePath()
+    console.log('[LogsService] Opening log file:', filePath)
+    if (existsSync(filePath)) {
+      await shell.openPath(filePath)
+    } else {
+      console.warn('[LogsService] Log file not found:', filePath)
+    }
+  }
+
+  async uploadCurrentLog(): Promise<{ url: string; password: string; slug: string } | null> {
     const logFilePath = this.getLogFilePath()
 
     if (!existsSync(logFilePath)) {
@@ -18,80 +38,71 @@ class LogsService implements LogsAPI {
       return null
     }
 
-    // Create temporary zip file path
-    const zipFilePath = join(app.getPath('userData'), 'temp-log.zip')
-
     try {
-      console.log('[LogsService] Compressing log file...')
+      console.log('[LogsService] Reading log file...')
+      const raw = readFileSync(logFilePath, 'utf-8')
 
-      // Remove existing zip file if it exists
-      if (existsSync(zipFilePath)) {
-        unlinkSync(zipFilePath)
-      }
+      // Truncate to last MAX_LOG_BYTES if the file is too large
+      const content =
+        Buffer.byteLength(raw, 'utf-8') > MAX_LOG_BYTES
+          ? `[...truncated — showing last ~150 KB...]\n\n${raw.slice(-MAX_LOG_BYTES)}`
+          : raw
 
-      // Check if 7zip is ready
-      if (!dependencyService.getStatus().sevenZip.ready) {
-        throw new Error('7zip is not available. Cannot compress log file.')
-      }
+      console.log('[LogsService] Uploading log to rentry.co...')
 
-      // Compress the log file using SevenZip
-      await new Promise<void>((resolve, reject) => {
-        const myStream = SevenZip.add(zipFilePath, logFilePath, {
-          $bin: dependencyService.get7zPath()
-        })
-
-        myStream.on('end', () => {
-          console.log('[LogsService] Log file compressed successfully')
-          resolve()
-        })
-
-        myStream.on('error', (error) => {
-          console.error('[LogsService] Compression error:', error)
-          reject(error)
-        })
-      })
-
-      console.log('[LogsService] Uploading compressed log file to catbox.moe...')
-
-      // Read the compressed file content
-      const zipContent = readFileSync(zipFilePath)
-
-      // Create FormData for catbox upload
-      const formData = new FormData()
-      formData.append('userhash', '') // Empty userhash for anonymous upload
-      formData.append('reqtype', 'fileupload')
-
-      // Create a Blob for the zip file content and append it
-      const fileBlob = new Blob([zipContent], { type: 'application/zip' })
-      formData.append('fileToUpload', fileBlob, 'apprenticevr-main.log.zip')
-
-      // Upload to catbox.moe
-      const response = await fetch('https://catbox.moe/user/api.php', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (response.ok) {
-        // Catbox returns the URL directly as plain text
-        const shareableUrl = await response.text()
-        console.log('[LogsService] Compressed log file uploaded successfully:', shareableUrl)
-        return { url: shareableUrl.trim(), password: '' } // No password needed for catbox
-      } else {
-        throw new Error(`Upload failed: ${response.status} ${response.statusText}`)
-      }
-    } catch (error) {
-      console.error('[LogsService] Failed to compress or upload log file:', error)
-      return null
-    } finally {
-      // Clean up temporary zip file
-      if (existsSync(zipFilePath)) {
-        try {
-          unlinkSync(zipFilePath)
-          console.log('[LogsService] Temporary zip file cleaned up')
-        } catch (cleanupError) {
-          console.warn('[LogsService] Failed to clean up temporary zip file:', cleanupError)
+      // Step 1: Retrieve CSRF token from rentry.co
+      const initResponse = await fetch('https://rentry.co/', {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
+      })
+
+      const setCookieHeader = initResponse.headers.get('set-cookie')
+      const csrfMatch = setCookieHeader?.match(/csrftoken=([^;,\s]+)/)
+      if (!csrfMatch) {
+        throw new Error('Could not retrieve CSRF token from rentry.co')
       }
+      const csrfToken = csrfMatch[1]
+
+      // Step 2: POST log content to rentry.co API
+      const formData = new URLSearchParams()
+      formData.append('csrfmiddlewaretoken', csrfToken)
+      formData.append('text', content)
+
+      const postResponse = await fetch('https://rentry.co/api/new', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Cookie: `csrftoken=${csrfToken}`,
+          Referer: 'https://rentry.co/'
+        },
+        body: formData.toString()
+      })
+
+      if (!postResponse.ok) {
+        throw new Error(`Rentry API HTTP error: ${postResponse.status} ${postResponse.statusText}`)
+      }
+
+      const result = (await postResponse.json()) as {
+        status: string
+        url: string
+        edit_code: string
+      }
+
+      if (result.status !== '200') {
+        throw new Error(`Rentry API returned status ${result.status}`)
+      }
+
+      const entryUrl = result.url
+      // Strip protocol + domain to get just the slug (e.g. "abc12345")
+      const slug = entryUrl.replace(/^https?:\/\/rentry\.co\//, '')
+
+      console.log('[LogsService] Log uploaded successfully:', entryUrl, '(slug:', slug + ')')
+      return { url: entryUrl, password: '', slug }
+    } catch (error) {
+      console.error('[LogsService] Failed to upload log to rentry.co:', error)
+      return null
     }
   }
 }

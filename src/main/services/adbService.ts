@@ -780,9 +780,19 @@ class AdbService extends EventEmitter implements AdbAPI {
         )
         return await this._pushDirectoryRecursive(serial, localPath, finalRemotePath, deviceClient)
       } else {
-        // It's a file
+        // It's a file — ensure the parent directory exists on the device first.
+        // This is required on Quest 3 (and generally) when the destination folder
+        // may not yet exist (e.g. /sdcard/Android/obb/<pkg>/ on a fresh device).
+        const remoteParentDir = path.posix.dirname(finalRemotePath)
+        if (remoteParentDir && remoteParentDir !== '.') {
+          console.log(
+            `[ADB Service] Ensuring remote parent directory exists: ${remoteParentDir}`
+          )
+          await this.runShellCommand(serial, `mkdir -p "${remoteParentDir}"`)
+        }
+
         console.log(
-          `[ADB Service] Pushing file ${localPath} to ${serial}:${finalRemotePath}... (original remote: ${remotePath.replace(/\\/g, '/') /* Log normalized path here too for clarity */})`
+          `[ADB Service] Pushing file ${localPath} to ${serial}:${finalRemotePath}...`
         )
         const transfer = await deviceClient.push(localPath, finalRemotePath)
         return new Promise<boolean>((resolve, reject) => {

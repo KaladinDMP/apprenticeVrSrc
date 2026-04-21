@@ -374,7 +374,9 @@ export interface SettingsAPIRenderer
 
 // Logs API
 export interface LogsAPI {
-  uploadCurrentLog: () => Promise<{ url: string; password: string } | null>
+  uploadCurrentLog: () => Promise<{ url: string; password: string; slug: string } | null>
+  openLogFolder: () => Promise<void>
+  openLogFile: () => Promise<void>
 }
 
 export interface LogsAPIRenderer extends LogsAPI {}
