@@ -12,8 +12,72 @@ on:
       - 'v*.*.*'
 
 jobs:
+  bump-version:
+    name: Commit version bump to package.json
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      sha: ${{ steps.push.outputs.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Need write access to push the version bump commit
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: resolve
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="${INPUT_VERSION#v}"
+          elif [[ "$REF_NAME" == v*.*.* ]]; then
+            VERSION="${REF_NAME#v}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Resolved version: $VERSION"
+
+      - name: Write version into package.json
+        shell: bash
+        env:
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: |
+          node -e "const fs=require('fs');const p=require('./package.json');p.version=process.env.VERSION;fs.writeFileSync('./package.json',JSON.stringify(p,null,2)+'\n');"
+          echo "package.json version is now: $(node -p "require('./package.json').version")"
+
+      - name: Commit and push version bump
+        id: push
+        shell: bash
+        env:
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet package.json; then
+            echo "package.json already at $VERSION, nothing to commit"
+            echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          else
+            git add package.json
+            git commit -m "chore: bump version to $VERSION [skip ci]"
+            # Push to the default branch (main/master) — not to a tag
+            DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')
+            git push origin HEAD:$DEFAULT_BRANCH
+            echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+            echo "Pushed version bump commit for $VERSION"
+          fi
+
   build:
     name: Build on ${{ matrix.os }}
+    needs: bump-version
     runs-on: ${{ matrix.os }}
     # A single-OS failure should not cancel the sibling builds or block the release job.
     continue-on-error: true
@@ -28,6 +92,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Check out the commit that has the bumped package.json
+          ref: ${{ needs.bump-version.outputs.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -57,27 +124,12 @@ jobs:
         id: build_details
         shell: bash
         env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
-          REF_NAME: ${{ github.ref_name }}
+          VERSION: ${{ needs.bump-version.outputs.version }}
         run: |
           PRODUCT_NAME=$(node -p "require('./package.json').name")
 
-          # Resolve the version from: workflow_dispatch input, pushed tag, or package.json.
-          if [ -n "$INPUT_VERSION" ]; then
-            VERSION="${INPUT_VERSION#v}"
-          elif [[ "$REF_NAME" == v*.*.* ]]; then
-            VERSION="${REF_NAME#v}"
-          else
-            VERSION=$(node -p "require('./package.json').version")
-          fi
-
           echo "Using version: $VERSION"
           echo "package_version=${VERSION}" >> $GITHUB_OUTPUT
-
-          # Pin the version into package.json so electron-builder embeds it in the artifact
-          # names AND so app.getVersion() returns the correct value inside the app.
-          export VERSION
-          node -e "const fs=require('fs');const p=require('./package.json');p.version=process.env.VERSION;fs.writeFileSync('./package.json',JSON.stringify(p,null,2)+'\n');"
 
           OUTPUT_DIR="dist"
 
@@ -135,7 +187,7 @@ jobs:
 
   create_release:
     name: Create GitHub Release
-    needs: [build]
+    needs: [bump-version, build]
     # Run the release step even if one or more OS builds failed, so the successful
     # artifacts still get published.
     if: always()
@@ -143,30 +195,10 @@ jobs:
     permissions:
       contents: write
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ needs.bump-version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Resolve release version
-        id: version
-        shell: bash
-        env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
-          JOB_VERSION: ${{ needs.build.outputs.package_version }}
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          if [ -n "$INPUT_VERSION" ]; then
-            VERSION="${INPUT_VERSION#v}"
-          elif [ -n "$JOB_VERSION" ]; then
-            VERSION="${JOB_VERSION#v}"
-          elif [[ "$REF_NAME" == v*.*.* ]]; then
-            VERSION="${REF_NAME#v}"
-          else
-            VERSION=$(node -p "require('./package.json').version")
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Resolved release version: $VERSION"
 
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
@@ -184,8 +216,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Release v${{ steps.version.outputs.version }}
+          tag_name: v${{ needs.bump-version.outputs.version }}
+          name: Release v${{ needs.bump-version.outputs.version }}
           draft: true
           prerelease: false
           generate_release_notes: true

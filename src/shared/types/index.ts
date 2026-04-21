@@ -219,6 +219,7 @@ export interface AdbAPI {
   getUserName: (serial: string) => Promise<string>
   setUserName: (serial: string, name: string) => Promise<void>
   pingDevice: (ipAddress: string) => Promise<{ reachable: boolean; responseTime?: number }>
+  runShellCommand: (serial: string, command: string) => Promise<string | null>
 }
 
 export interface DependencyAPI {

@@ -30,8 +30,10 @@ import {
   Wifi1Regular,
   CheckmarkCircleRegular,
   DismissCircleRegular as DisconnectedCircleRegular,
-  ClockRegular
+  ClockRegular,
+  WindowConsoleRegular
 } from '@fluentui/react-icons'
+import { AdbShellDialog } from './AdbShellDialog'
 
 interface DeviceListProps {
   onSkip?: () => void
@@ -151,6 +153,7 @@ const DeviceList: React.FC<DeviceListProps> = ({ onSkip, onConnected }) => {
   const [connectingDeviceId, setConnectingDeviceId] = React.useState<string | null>(null)
   const [connectionError, setConnectionError] = React.useState<string | null>(null)
   const [lastFailedDeviceId, setLastFailedDeviceId] = React.useState<string | null>(null)
+  const [shellDialogDeviceId, setShellDialogDeviceId] = React.useState<string | null>(null)
 
   // Get all bookmarked IP addresses to check for duplicates
   const bookmarkedIpAddresses = React.useMemo(() => {
@@ -542,6 +545,19 @@ const DeviceList: React.FC<DeviceListProps> = ({ onSkip, onConnected }) => {
                       </Button>
                     )}
 
+                    {/* ADB Shell button for any currently-connected device */}
+                    {isCurrentDeviceConnected && (
+                      <Button
+                        icon={<WindowConsoleRegular />}
+                        onClick={() => setShellDialogDeviceId(device.id)}
+                        appearance="subtle"
+                        size="small"
+                        aria-label="Open ADB shell"
+                      >
+                        ADB Shell
+                      </Button>
+                    )}
+
                     {(isConnectedBookmark && isCurrentDeviceConnected) ||
                     (isTcpDevice && isConnectable && isCurrentDeviceConnected) ? (
                       <Button
@@ -600,6 +616,14 @@ const DeviceList: React.FC<DeviceListProps> = ({ onSkip, onConnected }) => {
           </div>
         )}
       </CardPreview>
+
+      {shellDialogDeviceId && (
+        <AdbShellDialog
+          deviceId={shellDialogDeviceId}
+          isOpen={shellDialogDeviceId !== null}
+          onDismiss={() => setShellDialogDeviceId(null)}
+        />
+      )}
     </Card>
   )
 }
