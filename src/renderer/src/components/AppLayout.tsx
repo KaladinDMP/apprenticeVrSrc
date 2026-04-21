@@ -45,6 +45,8 @@ import { useSettings } from '@renderer/hooks/useSettings'
 import { LanguageProvider } from '@renderer/context/LanguageProvider'
 import { useLanguage } from '@renderer/hooks/useLanguage'
 import LocalUploadDialog from './LocalUploadDialog'
+import CreditsDialog from './CreditsDialog'
+import '../assets/credits-dialog.css'
 
 enum AppView {
   DEVICE_LIST,
@@ -109,6 +111,15 @@ const useStyles = makeStyles({
     fontFamily: 'monospace',
     color: 'rgba(0, 212, 255, 0.55)',
     lineHeight: '1.2'
+  },
+  titleCredit: {
+    fontSize: '9px',
+    letterSpacing: '0.14em',
+    fontFamily: 'monospace',
+    color: 'rgba(176, 64, 255, 0.5)',
+    lineHeight: '1.2',
+    display: 'flex',
+    alignItems: 'center'
   },
   mainContent: {
     flexGrow: 1,
@@ -285,6 +296,7 @@ const AppLayout: React.FC = () => {
   const { colorScheme, setColorScheme } = useSettings()
   const [isDownloadsOpen, setIsDownloadsOpen] = useState(false)
   const [isUploadsOpen, setIsUploadsOpen] = useState(false)
+  const [isCreditsOpen, setIsCreditsOpen] = useState(false)
   const mountNodeRef = useRef<HTMLDivElement>(null)
   const styles = useStyles()
   const { queue: downloadQueue } = useDownload()
@@ -408,6 +420,16 @@ const AppLayout: React.FC = () => {
                   <div className={styles.titleSection}>
                     <span className={styles.titleMain}>Apprentice VR</span>
                     <span className={styles.titleSub}>アプレンティスVR · VR SRC EDITION</span>
+                    <span className={styles.titleCredit}>
+                      MADE WITH ♥ BY DMP OF ARMGDDN GAMES
+                      <button
+                        className="credits-question-btn"
+                        onClick={() => setIsCreditsOpen(true)}
+                        title="Credits"
+                      >
+                        ?
+                      </button>
+                    </span>
                   </div>
                 </div>
                 <div className={styles.headerActions}>
@@ -555,6 +577,11 @@ const AppLayout: React.FC = () => {
           </GameDialogProvider>
         </GamesProvider>
       </AdbProvider>
+      <CreditsDialog
+        open={isCreditsOpen}
+        onClose={() => setIsCreditsOpen(false)}
+        variant="main"
+      />
     </FluentProvider>
   )
 }
